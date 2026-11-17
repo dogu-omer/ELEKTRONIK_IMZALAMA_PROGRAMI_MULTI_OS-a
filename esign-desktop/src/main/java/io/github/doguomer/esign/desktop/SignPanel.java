@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
+import java.util.prefs.Preferences;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -53,7 +54,14 @@ final class SignPanel extends JPanel {
         super(new BorderLayout(8, 8));
         this.service = service;
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        new Pkcs11LibraryLocator().locate().ifPresent(p -> library.setText(p.toString()));
+        // Son kullanılan kütüphane yolu hatırlanır (Windows'ta kayıt defteri, Linux/macOS'ta kullanıcı tercihleri);
+        // yoksa ESIGN_PKCS11_LIB veya bilinen AKİS yolları. Remembers the last library path.
+        String remembered = prefs().get(PREF_LIB, "");
+        if (!remembered.isBlank() && Files.isRegularFile(Path.of(remembered))) {
+            library.setText(remembered);
+        } else {
+            new Pkcs11LibraryLocator().locate().ifPresent(p -> library.setText(p.toString()));
+        }
         String envTsa = System.getenv("ESIGN_TSA_URL");
         if (envTsa != null) {
             tsa.setText(envTsa.strip());
@@ -103,7 +111,7 @@ final class SignPanel extends JPanel {
 
     private Path libraryPath() {
         Path p = Ui.path(library).orElseThrow(() -> new IllegalArgumentException(
-                "Kart kütüphanesini seçin (AKİS: libakisp11.so / libakisp11.dylib)."));
+                "Kart kütüphanesini seçin (AKİS: akisp11.dll / libakisp11.so / libakisp11.dylib)."));
         if (!Files.isRegularFile(p)) {
             throw new IllegalArgumentException("Kart kütüphanesi bulunamadı: " + p);
         }
@@ -119,6 +127,7 @@ final class SignPanel extends JPanel {
         Path lib;
         try {
             lib = libraryPath();
+            rememberLibrary(lib);
         } catch (IllegalArgumentException ex) {
             error(ex.getMessage());
             return;
@@ -158,6 +167,20 @@ final class SignPanel extends JPanel {
                 }
             }
         }.execute();
+    }
+
+    private static final String PREF_LIB = "pkcs11Library";
+
+    private static Preferences prefs() {
+        return Preferences.userNodeForPackage(SignPanel.class);
+    }
+
+    private static void rememberLibrary(Path lib) {
+        try {
+            prefs().put(PREF_LIB, lib.toAbsolutePath().toString());
+        } catch (RuntimeException ignored) {
+            // tercih deposu yazılamazsa imza yine sürer / best effort
+        }
     }
 
     private void startSigning() {

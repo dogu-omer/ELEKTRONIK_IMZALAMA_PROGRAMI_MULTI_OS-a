@@ -22,6 +22,17 @@ jobs:
           sed 's/^export //; s/'"'"'//g' "$RUNNER_TEMP/softhsm.env" >> "$GITHUB_ENV"
       - name: Build and test
         run: mvn -B -ntp verify
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - name: Build and test (kart testleri atlanır / card tests skipped)
+        run: mvn -B -ntp verify
+      - name: MSI + install test
+        shell: pwsh
+        run: packaging/windows/build-msi.ps1
   docker:
     runs-on: ubuntu-24.04
     steps:

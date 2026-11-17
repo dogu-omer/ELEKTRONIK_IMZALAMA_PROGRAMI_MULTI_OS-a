@@ -1,4 +1,4 @@
-# esign — Linux ve macOS için Elektronik İmza / E-Signature for Linux and macOS
+# esign — Linux, macOS ve Windows için Elektronik İmza / E-Signature for Linux, macOS and Windows
 
 [![ci](https://github.com/dogu-omer/ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS-a/actions/workflows/ci.yml/badge.svg)](https://github.com/dogu-omer/ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS-a/actions/workflows/ci.yml)
 [![Lisans: GPL-3.0](https://img.shields.io/badge/lisans-GPL--3.0-blue.svg)](LICENSE)
@@ -12,7 +12,7 @@ damgası** ile BES veya T profilinde imza atar. İmza motoru olarak Avrupa Komis
 with a PKCS#11 smart card or USB token (e.g. Turkish AKİS cards), with optional **RFC 3161
 timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 319 102-1, OCSP/CRL). Built on the European Commission's [EU DSS](https://github.com/esig/dss).
 
-> ⚠️ **Durum / Status: v0.7.0 — Faz 6 / 7 sürüyor.** İmza üretimi, doğrulama, OCSP/CRL, LT/LTA, görünür PDF imzası, REST API, Docker ve masaüstü arayüzü hazırdır;
+> ⚠️ **Durum / Status: v0.8.0 — Faz 6 / 7 sürüyor.** İmza üretimi, doğrulama, OCSP/CRL, LT/LTA, görünür PDF imzası, REST API, Docker, masaüstü arayüzü ve Windows kurulum paketi hazırdır;
 > **İmzager karşılıklı testleri ve gerçek ESHS/Kamu SM ortamında uçtan uca test henüz yapılmadı.** Bu yazılım
 > BTK veya TÜBİTAK tarafından onaylanmış değildir. / Signing, validation, revocation checks and LT/LTA
 > work; İmzager interoperability and end-to-end tests against real Turkish CAs/TSAs are not done yet.
@@ -36,6 +36,8 @@ timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 
 12. [REST API](#12-rest-api)
 13. [Docker](#13-docker)
 14. [Masaüstü arayüzü / Desktop app](#14-masaüstü-arayüzü--desktop-app)
+15. [Windows](#15-windows)
+16. [Sürüm imzaları ve doğrulama / Release signatures](#16-sürüm-imzaları-ve-doğrulama--release-signatures)
 
 ---
 
@@ -68,6 +70,7 @@ sayfasındadır. Paketler kendi Java çalışma ortamını içerir; ayrıca Java
 | --- | --- | --- |
 | Debian, Ubuntu, Kali, Pardus (amd64) | `esign_<sürüm>_amd64.deb` | `sudo apt install ./esign_*_amd64.deb` |
 | macOS (Apple Silicon) | `esign-<sürüm>-macos-arm64.pkg` | Çift tıklayın / double-click |
+| Windows 10/11 (x64) | `esign-<sürüm>-windows-x64.msi` | Çift tıklayın; ayrıntı bölüm 15 / double-click, see §15 |
 | Diğer / Other (Java 21+) | `esign.jar` | `java -jar esign.jar help` |
 
 Kurulumdan sonra / After installing:
@@ -86,6 +89,9 @@ esign version
 ```bash
 sha256sum -c SHA256SUMS.txt --ignore-missing      # macOS: shasum -a 256 -c SHA256SUMS.txt
 ```
+
+Tüm sürüm dosyaları ayrıca Sigstore ile imzalıdır; doğrulama için bölüm 16.
+*All release files are also Sigstore-signed; see §16.*
 
 > macOS paketi henüz Apple tarafından imzalı/notarize değildir. Gatekeeper uyarısında
 > *Sistem Ayarları → Gizlilik ve Güvenlik → Yine de Aç* seçin.
@@ -109,6 +115,7 @@ AKİS PKCS#11 sürücüsünü (`libakisp11.so`) TÜBİTAK BİLGEM'den veya kart�
 | --- | --- |
 | Linux | `/usr/lib/libakisp11.so`, `/usr/local/lib/libakisp11.so`, `/usr/lib/x86_64-linux-gnu/libakisp11.so`, `/usr/lib64/libakisp11.so` |
 | macOS | `/usr/local/lib/libakisp11.dylib`, `/Library/AKIS/libakisp11.dylib` |
+| Windows | `%SystemRoot%\System32\akisp11.dll`, `%ProgramFiles%\AKIS\akisp11.dll`, `%ProgramFiles%\TUBITAK\AKIS\akisp11.dll`, `%ProgramFiles%\AKIS\x64\akisp11.dll` |
 
 Farklı bir yerdeyse `--lib /yol/libakisp11.so` verin veya `ESIGN_PKCS11_LIB` ortam değişkenini
 ayarlayın. Başka bir PKCS#11 sürücüsü (ör. OpenSC `opensc-pkcs11.so`) de aynı şekilde kullanılabilir.
@@ -270,7 +277,7 @@ validate signatures or check revocation, and must not be the sole basis for a le
 
 ```bash
 sudo apt install openjdk-21-jdk maven            # macOS: brew install openjdk@21 maven
-mvn -B verify                                     # 105 test
+mvn -B verify                                     # 108 test
 java -jar esign-cli/target/esign.jar help
 
 # Kartsız gerçek PKCS#11 testi (SoftHSM2) / real PKCS#11 tests without a card
@@ -281,11 +288,14 @@ mvn -B verify
 # Gömülü JRE'li paket / native package with embedded JRE
 packaging/jpackage.sh deb       # Linux (fakeroot gerekir)  → dist/esign_<sürüm>_amd64.deb
 packaging/jpackage.sh pkg       # macOS                     → dist/esign-<sürüm>.pkg
+# Windows (PowerShell, WiX 3 + Git Bash): MSI üretir, kurar/kaldırır ve dener
+pwsh packaging/windows/build-msi.ps1   # → dist/esign-<sürüm>-windows-x64.msi
 ```
 
 Sürüm yayını / release: `pom.xml` dosyalarındaki sürümü artırıp `main`'e gönderin (veya `v*` etiketi
 gönderin). GitHub Actions `release` iş akışı testleri çalıştırır; o sürüm henüz yayımlanmadıysa `v<sürüm>`
-etiketini oluşturup `.deb`, `.pkg`, `esign.jar` ve `SHA256SUMS.txt` dosyalarını Releases'e yükler.
+etiketini oluşturup `.deb`, `.pkg`, `.msi`, jar'lar, `SHA256SUMS.txt` ve her dosyanın Sigstore imzasını
+(`*.sigstore.json`) Releases'e yükler.
 *Bump the version and push to `main`; the workflow tags and publishes it once.*
 
 ## 9. Mimari / Architecture
@@ -419,3 +429,110 @@ terk etmez. Mevcut dosyanın üzerine yazılmaz (`belge (2).pdf` gibi yeni ad ve
 Doğrula: imzalı dosya (ayrık imzada asıl belge), güvenilir kök klasörü ve çevrimdışı seçeneği; sonuç
 GEÇERLİ / BELİRSİZ / GEÇERSİZ olarak renkli gösterilir.
 
+## 15. Windows
+
+### Kurulum / Installation
+
+1. [Releases](https://github.com/dogu-omer/ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS-a/releases) sayfasından `esign-<sürüm>-windows-x64.msi` dosyasını indirin.
+   Java kurmanıza gerek yoktur; paket kendi Java çalışma ortamını (JRE) içerir.
+2. Çift tıklayıp kurun (yönetici izni ister). Varsayılan klasör `C:\Program Files\esign`.
+3. Kurulum şunları yapar / the installer:
+   - **Başlat menüsü → esign → esign-gui** ve masaüstü kısayolu (masaüstü arayüzü),
+   - kurulum klasörünü **sistem PATH**'ine ekler; yeni bir komut isteminde `esign` çalışır,
+   - kaldırıldığında (Ayarlar → Uygulamalar) PATH girdisini de siler.
+
+```bat
+:: Yeni bir cmd / PowerShell penceresi açın / open a NEW terminal
+esign version
+esign list-certs
+esign sign belge.pdf
+esign gui
+```
+
+### AKİS kart sürücüsü / Smart card driver
+
+AKİS Windows sürücüsünü TÜBİTAK BİLGEM'den veya kartınızı aldığınız ESHS'den kurun. Sürücü
+`akisp11.dll` dosyasını genellikle `C:\Windows\System32` klasörüne koyar ve program onu **kendiliğinden bulur**
+(bölüm 3'teki tabloya bakın). Windows'un kendi akıllı kart hizmeti (`SCardSvr`) kullanılır; ek servis gerekmez.
+*The AKİS driver usually installs `akisp11.dll` into System32, where it is found automatically.*
+
+DLL başka yerdeyse / if the DLL is elsewhere:
+
+| Yöntem / Method | Örnek / Example |
+| --- | --- |
+| Komut başına / per command | `esign sign belge.pdf --lib "C:\Program Files\AKIS\akisp11.dll"` |
+| Kalıcı (kullanıcı) / persistent | `setx ESIGN_PKCS11_LIB "C:\Program Files\AKIS\akisp11.dll"` (yeni pencere açın) |
+| Masaüstü arayüzü / GUI | *Kart kütüphanesi* alanından seçin; son kullanılan yol hatırlanır |
+
+> Uygulama 64 bittir; **64 bit** `akisp11.dll` gerekir. `SysWOW64` altındaki 32 bit DLL çalışmaz.
+> *The app is 64-bit and needs the 64-bit DLL.*
+
+### SmartScreen uyarısı / SmartScreen warning
+
+Sürüm paketleri şu an bir **Authenticode kod imzalama sertifikasıyla imzalı değildir** (proje ücretli sertifika
+almadıkça). Bu yüzden Windows *"Windows kişisel bilgisayarınızı korudu"* / *"Bilinmeyen yayıncı"* uyarısı
+gösterebilir. Dosyanın bu depodan geldiğini **SHA256SUMS ve Sigstore imzasıyla** (bölüm 16) doğruladıktan sonra
+**Ek bilgi → Yine de çalıştır** seçin. Tarayıcı indirmeyi engellerse *Tut / Keep* deyin.
+
+*The MSI is not Authenticode-signed (no paid code-signing certificate yet), so SmartScreen may warn about an
+unknown publisher. Verify the download (§16), then choose **More info → Run anyway**.*
+
+### Authenticode imzası (bakımcılar için) / Code signing for maintainers
+
+İş akışı imzalamaya hazırdır; sertifika eklenince bir sonraki sürüm kendiliğinden imzalanır. Sırlar **yalnızca**
+*GitHub → Settings → Secrets and variables → Actions → New repository secret* altına girilir; depoya asla
+dosya olarak eklenmez (`.gitignore` `*.pfx`, `*.p12` dosyalarını dışlar).
+
+**A) PFX sertifikası (OV/EV kod imzalama)**
+
+1. Bir sertifika otoritesinden (ör. DigiCert, Sectigo, GlobalSign, Certum; Türkiye'de kod imzalama satan ESHS'ler)
+   **kod imzalama sertifikası** alın. 2023'ten beri özel anahtar donanımda (token/HSM) tutulmak zorunda
+   olduğundan çoğu sağlayıcı PFX yerine bulut imzalama sunar; PFX alabiliyorsanız bu yolu kullanın,
+   alamıyorsanız B'yi seçin.
+2. PFX'i base64'e çevirin (PowerShell):
+   `[Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx")) | Set-Clipboard`
+3. Secrets: `WINDOWS_PFX_BASE64` (panodaki metin), `WINDOWS_PFX_PASSWORD` (PFX parolası).
+   İsteğe bağlı `WINDOWS_TIMESTAMP_URL` (varsayılan `http://timestamp.digicert.com`).
+
+**B) Azure Artifact Signing (eski adıyla Trusted Signing)**
+
+1. Azure'da *Artifact Signing* hesabı ve *Public Trust* sertifika profili oluşturun, kimlik doğrulamasını tamamlayın.
+2. Bir uygulama kaydı (service principal) açıp ona *Artifact Signing Certificate Profile Signer* (eski adı *Trusted Signing Certificate Profile Signer*) rolünü verin.
+3. Secrets: `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_SIGNING_ENDPOINT`
+   (ör. `https://weu.codesigning.azure.net/`), `AZURE_SIGNING_ACCOUNT`, `AZURE_CERT_PROFILE`.
+
+İkisi de tanımlı değilse imza adımı atlanır ve MSI imzasız yayımlanır. İkisi birden tanımlıysa PFX kullanılır.
+Not: Yalnızca `.msi` imzalanır; içindeki `esign.exe` başlatıcıları imzasızdır (SmartScreen indirilen MSI'ya bakar).
+*If no secret is set the signing step is skipped. Only the MSI is signed.*
+
+## 16. Sürüm imzaları ve doğrulama / Release signatures
+
+Her sürümdeki **tüm dosyalar** (`.deb`, `.pkg`, `.msi`, jar'lar ve `SHA256SUMS.txt`) GitHub Actions içinde
+[Sigstore](https://www.sigstore.dev/) **cosign** ile anahtarsız (keyless) imzalanır: imza, bu deponun `release.yml`
+iş akışının kimliğine bağlıdır ve herkese açık Rekor şeffaflık kaydına yazılır. Her dosyanın yanında
+`<dosya>.sigstore.json` paketi bulunur. Ayrıca GitHub **artifact attestation** (SLSA derleme kökeni) üretilir.
+Bu imzalar ücretsizdir ama Windows SmartScreen veya macOS Gatekeeper tarafından tanınmaz; onlar için
+Authenticode / Apple notarization gerekir (bölüm 15).
+
+*Every release file is signed keyless with Sigstore cosign (bound to this repo's release workflow, logged in
+Rekor) and has a GitHub build-provenance attestation. These do not replace Authenticode/notarization.*
+
+```bash
+# 1) cosign ile / with cosign (https://docs.sigstore.dev/cosign/system_config/installation/)
+F=esign-0.8.0-windows-x64.msi
+cosign verify-blob --bundle "$F.sigstore.json" \
+  --certificate-identity-regexp '^https://github.com/dogu-omer/ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS-a/\.github/workflows/release\.yml@' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com "$F"
+
+# SHA256SUMS'ı imzayla doğrulayıp sonra özetleri kontrol etmek tüm dosyaları kapsar
+# verifying the signed SHA256SUMS then the checksums covers every file
+cosign verify-blob --bundle SHA256SUMS.txt.sigstore.json \
+  --certificate-identity-regexp '^https://github.com/dogu-omer/ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS-a/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com SHA256SUMS.txt
+sha256sum -c SHA256SUMS.txt --ignore-missing
+
+# 2) GitHub CLI ile / with the GitHub CLI
+gh attestation verify esign-0.8.0-windows-x64.msi -R dogu-omer/ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS-a
+```
+
+Windows PowerShell'de özet / checksum on Windows: `Get-FileHash .\esign-0.8.0-windows-x64.msi -Algorithm SHA256`

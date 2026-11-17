@@ -6,7 +6,7 @@
   <parent>
     <groupId>io.github.doguomer.esign</groupId>
     <artifactId>esign-parent</artifactId>
-    <version>0.7.0</version>
+    <version>0.8.0</version>
   </parent>
   <artifactId>esign-validation</artifactId>
   <description>CAdES/PAdES/XAdES imza doğrulama (EU DSS, ETSI EN 319 102-1)</description>

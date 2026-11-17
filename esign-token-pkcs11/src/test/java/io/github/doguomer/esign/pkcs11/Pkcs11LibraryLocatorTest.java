@@ -38,7 +38,30 @@ class Pkcs11LibraryLocatorTest {
 
     @Test
     void unknownOsHasNoCandidates() {
-        var loc = new Pkcs11LibraryLocator(k -> null, p -> true, "Windows 11");
+        var loc = new Pkcs11LibraryLocator(k -> null, p -> true, "FreeBSD");
         assertTrue(loc.locate().isEmpty());
+    }
+
+    @Test
+    void windowsFindsAkisDllInSystem32() {
+        var env = Map.of("SystemRoot", "D:\\Win", "ProgramFiles", "C:\\Program Files");
+        String expected = "D:\\Win\\System32\\akisp11.dll";
+        var loc = new Pkcs11LibraryLocator(env::get, p -> p.toString().equals(expected), "Windows 11");
+        assertEquals(expected, loc.locate().orElseThrow().toString());
+        assertTrue(loc.candidates().contains("C:\\Program Files\\AKIS\\akisp11.dll"));
+    }
+
+    @Test
+    void windowsDefaultsWithoutEnvironment() {
+        var loc = new Pkcs11LibraryLocator(k -> null, p -> false, "Windows Server 2025");
+        assertEquals("C:\\Windows\\System32\\akisp11.dll", loc.candidates().get(0));
+        assertTrue(loc.locate().isEmpty());
+    }
+
+    @Test
+    void windowsEnvOverrideStillWins() {
+        var loc = new Pkcs11LibraryLocator(Map.of(Pkcs11LibraryLocator.ENV_VAR, "E:\\kart\\p11.dll")::get,
+                p -> true, "Windows 11");
+        assertEquals("E:\\kart\\p11.dll", loc.locate().orElseThrow().toString());
     }
 }

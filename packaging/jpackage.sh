@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 # Gömülü JRE ile yerel paket üretir (Java kurulu olmasa da çalışır).
 # Builds a native installer with an embedded, jlink-trimmed JRE.
-# Kullanım / usage: packaging/jpackage.sh deb|rpm|pkg|dmg|app-image   (önce: mvn -B package)
+# Kullanım / usage: packaging/jpackage.sh deb|rpm|pkg|dmg|msi|exe|app-image   (önce: mvn -B package)
+# Windows'ta Git Bash ile çalışır; msi/exe için WiX 3 (candle.exe/light.exe) PATH'te olmalıdır.
 set -euo pipefail
 
-TYPE="${1:?paket türü: deb|rpm|pkg|dmg|app-image}"
+TYPE="${1:?paket türü: deb|rpm|pkg|dmg|msi|exe|app-image}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 JAR="$ROOT/esign-cli/target/esign.jar"
 OUT="$ROOT/dist"
 [[ -f "$JAR" ]] || { echo "Önce derleyin: mvn -B package" >&2; exit 1; }
 
-VERSION="$(unzip -p "$JAR" META-INF/MANIFEST.MF | sed -n 's/^Implementation-Version: *//p' | tr -d '\r')"
+if command -v unzip >/dev/null 2>&1; then
+  VERSION="$(unzip -p "$JAR" META-INF/MANIFEST.MF | sed -n 's/^Implementation-Version: *//p' | tr -d '\r')"
+else  # Git Bash'te unzip olmayabilir / no unzip on some Windows shells
+  VERSION="$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$ROOT/pom.xml" | head -1)"
+fi
 VERSION="${VERSION%%-*}"   # 0.2.0-SNAPSHOT -> 0.2.0
 APP_VERSION="$VERSION"
 if [[ "$(uname -s)" == "Darwin" && "$APP_VERSION" == 0.* ]]; then
@@ -23,19 +28,26 @@ MODULES="java.base,java.compiler,java.desktop,java.naming,java.security.jgss,jav
 jdk.net,jdk.crypto.cryptoki,jdk.crypto.ec,jdk.charsets,jdk.localedata,jdk.zipfs,java.net.http,\
 java.logging,java.management,jdk.unsupported"
 
+# Windows'ta (Git Bash) jpackage.exe yerel yol ister / native Windows paths for jpackage.exe
+p() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else printf '%s' "$1"; fi; }
+
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 cp "$JAR" "$STAGE/"
 cp "$ROOT/LICENSE" "$STAGE/LICENSE"
 mkdir -p "$OUT"
 
+# Windows konsolunda Türkçe karakterler için stdout kodlaması konsolun kod sayfasına bırakılır.
+JOPTS="-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8"
+[[ "$TYPE" == msi || "$TYPE" == exe ]] && JOPTS="-Dfile.encoding=UTF-8"
+
 ARGS=(--type "$TYPE" --name esign --app-version "$APP_VERSION"
-  --input "$STAGE" --main-jar esign.jar --main-class io.github.doguomer.esign.cli.Main
+  --input "$(p "$STAGE")" --main-jar esign.jar --main-class io.github.doguomer.esign.cli.Main
   --add-modules "$MODULES" --jlink-options "--strip-debug --no-man-pages --no-header-files"
-  --java-options "-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8"
+  --java-options "$JOPTS"
   --description "E-imza (CAdES/PAdES/XAdES, PKCS#11/AKIS) - e-signature CLI ve masaustu"
-  --vendor "Omer Dogu" --copyright "GPL-3.0-or-later" --license-file "$ROOT/LICENSE"
-  --dest "$OUT")
+  --vendor "Omer Dogu" --copyright "GPL-3.0-or-later" --license-file "$(p "$ROOT/LICENSE")"
+  --dest "$(p "$OUT")")
 
 # Masaüstü arayüzü için ikinci başlatıcı (Linux menü kısayolu). macOS'ta uygulama Finder'dan açılınca
 # (terminal yoksa) arayüz kendiliğinden başlar. Second launcher for the desktop UI.
@@ -43,6 +55,9 @@ cat > "$STAGE/esign-gui.properties" <<PROPS
 main-class=io.github.doguomer.esign.desktop.DesktopApp
 description=esign - Elektronik Imza (masaustu)
 linux-shortcut=true
+win-console=false
+win-menu=true
+win-shortcut=true
 PROPS
 
 case "$TYPE" in
@@ -52,6 +67,14 @@ case "$TYPE" in
               --add-launcher "esign-gui=$STAGE/esign-gui.properties") ;;
   rpm) ARGS+=(--linux-package-name esign --linux-app-category Utilities
               --add-launcher "esign-gui=$STAGE/esign-gui.properties") ;;
+  msi|exe) # Ana başlatıcı esign.exe konsol uygulamasıdır (komut satırı); esign-gui.exe penceredir ve Başlat menüsü +
+           # masaüstü kısayolu alır. Kurulum klasörü PATH'e eklenir (packaging/windows/main.wxs).
+           # Main launcher is a console app; esign-gui gets Start menu/desktop shortcuts; install dir goes to PATH.
+           ARGS+=(--win-console --win-dir-chooser --win-menu-group "esign"
+              --win-upgrade-uuid "83e6b761-5324-41fe-bb3c-9b0039cf21ad"
+              --win-help-url "https://github.com/dogu-omer/ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS-a"
+              --resource-dir "$(p "$ROOT/packaging/windows")"
+              --add-launcher "esign-gui=$(p "$STAGE/esign-gui.properties")") ;;
   pkg|dmg) ARGS+=(--mac-package-identifier io.github.doguomer.esign --mac-package-name esign) ;;
 esac
 if [[ "$TYPE" == "app-image" ]]; then

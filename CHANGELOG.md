@@ -1,5 +1,17 @@
 # Değişiklik günlüğü / Changelog
 
+## esign v0.8.0 — Windows ve imzalı sürümler
+
+- Windows MSI (`packaging/windows/build-msi.ps1`, jpackage + WiX 3): gömülü JRE, `esign-gui` Başlat menüsü ve
+  masaüstü kısayolu, kurulum klasörü PATH'e (özel `packaging/windows/main.wxs`). CI'da windows-latest üzerinde
+  derleme, test, sessiz kurulum/kaldırma denemesi.
+- `Pkcs11LibraryLocator`: Windows aday yolları (`%SystemRoot%\System32\akisp11.dll`, `Program Files\AKIS` …).
+  Masaüstü arayüzü son kütüphane yolunu `Preferences` ile hatırlar.
+- Windows konsolunda stdout kodlaması zorlanmaz (Türkçe karakterler konsol kod sayfasıyla doğru görünür).
+- Sürüm iş akışı: tüm dosyalar + SHA256SUMS Sigstore cosign (anahtarsız) ile imzalanır, GitHub artifact
+  attestation üretilir. İsteğe bağlı Authenticode (PFX/signtool veya Azure Artifact Signing) — sır yoksa atlanır.
+- 108 test.
+
 ## esign v0.7.0 — Masaüstü arayüzü
 
 - Yeni `esign-desktop` modülü: Türkçe Swing arayüzü (İmzala / Doğrula / Hakkında). Dosya, kart sertifikası,

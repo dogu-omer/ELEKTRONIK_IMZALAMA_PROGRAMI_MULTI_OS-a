@@ -2,6 +2,7 @@ package io.github.doguomer.esign.pkcs11;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -28,6 +29,9 @@ public final class Pkcs11LibraryLocator {
     static final List<String> MAC_CANDIDATES = List.of(
             "/usr/local/lib/libakisp11.dylib",
             "/Library/AKIS/libakisp11.dylib");
+
+    /** Windows'ta AKİS sürücüsü DLL'i genellikle System32'ye kurar; Program Files altı yedek adaydır. */
+    static final String WINDOWS_DLL = "akisp11.dll";
 
     private final Function<String, String> env;
     private final Predicate<Path> exists;
@@ -59,6 +63,33 @@ public final class Pkcs11LibraryLocator {
         if (osName.contains("linux")) {
             return LINUX_CANDIDATES;
         }
+        if (osName.contains("win")) {
+            return windowsCandidates();
+        }
         return List.of();
+    }
+
+    /** Ortam değişkenlerinden (SystemRoot, ProgramFiles) Windows aday yollarını kurar. */
+    List<String> windowsCandidates() {
+        String sysRoot = envOr("SystemRoot", envOr("windir", "C:\\Windows"));
+        List<String> c = new ArrayList<>();
+        c.add(sysRoot + "\\System32\\" + WINDOWS_DLL);
+        for (String pf : new String[] {envOr("ProgramFiles", "C:\\Program Files"), env.apply("ProgramW6432")}) {
+            if (pf == null || pf.isBlank()) {
+                continue;
+            }
+            for (String dir : new String[] {"AKIS", "TUBITAK\\AKIS", "AKIS\\x64"}) {
+                String cand = pf + "\\" + dir + "\\" + WINDOWS_DLL;
+                if (!c.contains(cand)) {
+                    c.add(cand);
+                }
+            }
+        }
+        return List.copyOf(c);
+    }
+
+    private String envOr(String key, String def) {
+        String v = env.apply(key);
+        return v == null || v.isBlank() ? def : v.strip();
     }
 }
