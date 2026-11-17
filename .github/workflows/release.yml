@@ -1,7 +1,10 @@
 name: release
-# v* etiketi gönderilince: testler, .deb (Linux), .pkg (macOS) ve esign.jar üretilip GitHub Releases'e yüklenir.
+# main'e gönderimde veya v* etiketinde: testler, .deb (Linux), .pkg (macOS) ve esign.jar üretilir.
+# pom.xml sürümü (SNAPSHOT değilse) için henüz sürüm yoksa v<sürüm> etiketi ve GitHub Release oluşturulur.
+# On push to main or a v* tag: build packages; publish v<pom version> if not released yet.
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 permissions:
@@ -42,20 +45,34 @@ jobs:
         with: { name: macos, path: dist/*.pkg }
   publish:
     needs: [linux, macos]
-    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with: { path: out, merge-multiple: true }
-      - name: Checksums
-        run: cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
-      - name: Create release
+      - name: Version
+        id: v
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" out/* \
-            --title "esign $GITHUB_REF_NAME" \
-            --notes-file docs/release-notes.md
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="$GITHUB_REF_NAME"; else
+            TAG="v$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' pom.xml | head -1)"; fi
+          SKIP=false
+          [[ "$TAG" == *SNAPSHOT* ]] && SKIP=true
+          gh release view "$TAG" >/dev/null 2>&1 && SKIP=true
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"; echo "skip=$SKIP" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG skip=$SKIP"
+      - uses: actions/download-artifact@v4
+        if: steps.v.outputs.skip == 'false'
+        with: { path: out, merge-multiple: true }
+      - name: Checksums
+        if: steps.v.outputs.skip == 'false'
+        run: cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Create release
+        if: steps.v.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
+        run: |
+          gh release create "$TAG" out/* --target "$GITHUB_SHA" \
+            --title "esign $TAG" --notes-file docs/release-notes.md

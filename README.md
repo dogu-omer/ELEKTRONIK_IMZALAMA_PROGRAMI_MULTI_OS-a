@@ -241,8 +241,10 @@ packaging/jpackage.sh deb       # Linux (fakeroot gerekir)  → dist/esign_<sür
 packaging/jpackage.sh pkg       # macOS                     → dist/esign-<sürüm>.pkg
 ```
 
-Sürüm yayını / release: `git tag v0.2.0 && git push origin v0.2.0` → GitHub Actions `release` iş akışı
-testleri çalıştırır, `.deb`, `.pkg`, `esign.jar` ve `SHA256SUMS.txt` dosyalarını Releases'e yükler.
+Sürüm yayını / release: `pom.xml` dosyalarındaki sürümü artırıp `main`'e gönderin (veya `v*` etiketi
+gönderin). GitHub Actions `release` iş akışı testleri çalıştırır; o sürüm henüz yayımlanmadıysa `v<sürüm>`
+etiketini oluşturup `.deb`, `.pkg`, `esign.jar` ve `SHA256SUMS.txt` dosyalarını Releases'e yükler.
+*Bump the version and push to `main`; the workflow tags and publishes it once.*
 
 ## 9. Mimari / Architecture
 
