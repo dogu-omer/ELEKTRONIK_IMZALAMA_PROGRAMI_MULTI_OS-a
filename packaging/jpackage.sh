@@ -48,6 +48,7 @@ PROPS
 case "$TYPE" in
   deb) ARGS+=(--linux-package-name esign --linux-deb-maintainer "dogu-omer@users.noreply.github.com"
               --linux-app-category utils --linux-package-deps "pcscd" --linux-menu-group "Office;Utility" --linux-shortcut
+              --resource-dir "$ROOT/packaging/linux"
               --add-launcher "esign-gui=$STAGE/esign-gui.properties") ;;
   rpm) ARGS+=(--linux-package-name esign --linux-app-category Utilities
               --add-launcher "esign-gui=$STAGE/esign-gui.properties") ;;

@@ -1,0 +1,12 @@
+#!/bin/sh
+# esign prerm: menü kısayolunu kaldırmak en iyi çabadır. Removing the menu entry is best effort.
+set -e
+case "$1" in
+  remove|upgrade|deconfigure|failed-upgrade)
+    if command -v xdg-desktop-menu >/dev/null 2>&1; then
+      xdg-desktop-menu uninstall /opt/esign/lib/esign-esign-gui.desktop || true
+    fi
+    ;;
+  *) ;;
+esac
+exit 0
