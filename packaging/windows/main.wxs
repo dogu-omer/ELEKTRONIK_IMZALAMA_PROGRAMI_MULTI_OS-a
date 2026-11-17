@@ -98,7 +98,7 @@
         <Shortcut Id="EsignGuiDesktopLnk" Directory="DesktopFolder" Name="esign-gui" Description="esign - Elektronik Imza"
                   Target="[INSTALLDIR]esign-gui.exe" WorkingDirectory="INSTALLDIR"/>
         <RemoveFolder Id="RemoveEsignMenuDir" On="uninstall"/>
-        <RegistryValue Root="HKMU" Key="Software\esign" Name="shortcuts" Type="integer" Value="1" KeyPath="yes"/>
+        <RegistryValue Root="HKCU" Key="Software\esign" Name="shortcuts" Type="integer" Value="1" KeyPath="yes"/>
       </Component>
     </DirectoryRef>
 

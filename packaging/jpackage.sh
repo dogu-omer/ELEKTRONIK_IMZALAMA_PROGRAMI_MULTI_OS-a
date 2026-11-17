@@ -68,7 +68,7 @@ case "$TYPE" in
   msi|exe) # Ana başlatıcı esign.exe konsol uygulamasıdır (komut satırı); esign-gui.exe penceredir.
            # Kısayollar ve PATH packaging/windows/main.wxs içinde tanımlıdır (jpackage'ın --win-menu seçeneği ana
            # başlatıcıya da kısayol koyardı). Shortcuts + PATH are defined in main.wxs.
-           ARGS+=(--win-console --win-dir-chooser
+           ARGS+=(--verbose --win-console --win-dir-chooser
               --win-upgrade-uuid "83e6b761-5324-41fe-bb3c-9b0039cf21ad"
               --win-help-url "https://github.com/dogu-omer/ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS-a"
               --resource-dir "$(p "$ROOT/packaging/windows")"
