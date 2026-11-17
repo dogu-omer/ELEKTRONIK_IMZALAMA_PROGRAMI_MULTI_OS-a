@@ -34,4 +34,9 @@ class MainTest {
         assertEquals(1, run("list-certs", "--lib", "/olmayan/libakisp11.so"));
         assertTrue(err.toString(StandardCharsets.UTF_8).contains("Hata"));
     }
+
+    @Test
+    void signMissingFileExitsOne() {
+        assertEquals(1, run("sign", "--in", "/olmayan/dosya.docx"));
+    }
 }

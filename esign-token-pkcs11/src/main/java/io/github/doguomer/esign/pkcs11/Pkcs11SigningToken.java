@@ -5,7 +5,9 @@ import io.github.doguomer.esign.core.SigningToken;
 import io.github.doguomer.esign.core.TokenException;
 import java.security.AuthProvider;
 import java.security.KeyStore;
+import java.security.PrivateKey;
 import java.security.Provider;
+import java.security.Signature;
 import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
@@ -75,6 +77,46 @@ public final class Pkcs11SigningToken implements SigningToken {
             return List.copyOf(out);
         } catch (Exception e) {
             throw new TokenException("Sertifikalar okunamadı: " + rootMessage(e), e);
+        }
+    }
+
+    @Override
+    public List<X509Certificate> certificateChain(String alias) throws TokenException {
+        try {
+            Certificate[] chain = keyStore.getCertificateChain(alias);
+            if (chain == null) {
+                Certificate single = keyStore.getCertificate(alias);
+                chain = single == null ? new Certificate[0] : new Certificate[] {single};
+            }
+            if (chain.length == 0) {
+                throw new TokenException("Sertifika bulunamadı: " + alias);
+            }
+            List<X509Certificate> out = new ArrayList<>();
+            for (Certificate c : chain) {
+                out.add((X509Certificate) c);
+            }
+            return List.copyOf(out);
+        } catch (TokenException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new TokenException("Sertifika zinciri okunamadı: " + rootMessage(e), e);
+        }
+    }
+
+    @Override
+    public byte[] sign(String alias, byte[] data, String jcaAlgorithm) throws TokenException {
+        try {
+            if (!(keyStore.getKey(alias, null) instanceof PrivateKey key)) {
+                throw new TokenException("Özel anahtar bulunamadı (PIN ile oturum açıldı mı?): " + alias);
+            }
+            Signature sig = Signature.getInstance(jcaAlgorithm, provider);
+            sig.initSign(key);
+            sig.update(data);
+            return sig.sign();
+        } catch (TokenException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new TokenException("Kart üzerinde imza oluşturulamadı: " + rootMessage(e), e);
         }
     }
 

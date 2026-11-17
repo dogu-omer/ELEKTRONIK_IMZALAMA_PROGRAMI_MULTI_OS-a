@@ -1,16 +1,23 @@
 package io.github.doguomer.esign.cli;
 
+import io.github.doguomer.esign.cades.CadesBesSigner;
+import io.github.doguomer.esign.cades.CadesPackaging;
+import io.github.doguomer.esign.core.CertificateInfo;
+import io.github.doguomer.esign.core.SigningToken;
 import io.github.doguomer.esign.core.TokenException;
 import io.github.doguomer.esign.pkcs11.Pkcs11Config;
 import io.github.doguomer.esign.pkcs11.Pkcs11LibraryLocator;
 import io.github.doguomer.esign.pkcs11.Pkcs11SigningToken;
 import java.io.Console;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.List;
 
-/** esign komut satırı giriş noktası. Çıkış kodları: 0 başarı, 1 token hatası, 2 kullanım hatası. */
+/** esign komut satırı giriş noktası. Çıkış kodları: 0 başarı, 1 token/G-Ç hatası, 2 kullanım hatası. */
 public final class Main {
 
     private Main() {}
@@ -34,6 +41,7 @@ public final class Main {
                 yield 0;
             }
             case "list-certs" -> listCerts(a, out, err);
+            case "sign" -> sign(a, out, err);
             default -> {
                 err.println("Bilinmeyen komut: " + a.command());
                 err.print(CliArgs.USAGE);
@@ -43,22 +51,16 @@ public final class Main {
     }
 
     private static int listCerts(CliArgs a, PrintStream out, PrintStream err) {
-        var locator = new Pkcs11LibraryLocator();
-        Path lib = a.library().or(locator::locate).orElse(null);
+        Path lib = resolveLibrary(a, err);
         if (lib == null) {
-            err.println("PKCS#11 kütüphanesi bulunamadı. --lib verin veya "
-                    + Pkcs11LibraryLocator.ENV_VAR + " ayarlayın.");
-            err.println("Denenen yollar: " + locator.candidates());
             return 1;
         }
         char[] pin = null;
         if (a.login()) {
-            Console console = System.console();
-            if (console == null) {
-                err.println("--login için etkileşimli terminal gerekir.");
+            pin = readPin(err);
+            if (pin == null) {
                 return 2;
             }
-            pin = console.readPassword("PIN: ");
         }
         try (var token = Pkcs11SigningToken.open(new Pkcs11Config(lib, a.slot()), pin)) {
             out.print(CertificateTable.render(token.listCertificates(), Instant.now()));
@@ -67,5 +69,80 @@ public final class Main {
             err.println("Hata: " + e.getMessage());
             return 1;
         }
+    }
+
+    private static int sign(CliArgs a, PrintStream out, PrintStream err) {
+        Path in = a.input().orElseThrow();
+        Path target = a.outputPath();
+        if (!Files.isRegularFile(in)) {
+            err.println("Hata: dosya bulunamadı: " + in);
+            return 1;
+        }
+        if (Files.exists(target)) {
+            err.println("Hata: çıktı zaten var, üzerine yazılmaz: " + target);
+            return 1;
+        }
+        Path lib = resolveLibrary(a, err);
+        if (lib == null) {
+            return 1;
+        }
+        char[] pin = readPin(err);
+        if (pin == null) {
+            return 2;
+        }
+        try (var token = Pkcs11SigningToken.open(new Pkcs11Config(lib, a.slot()), pin)) {
+            String alias = chooseAlias(token, a, err);
+            if (alias == null) {
+                return 1;
+            }
+            byte[] content = Files.readAllBytes(in);
+            byte[] signed = new CadesBesSigner(token).sign(content, in.getFileName().toString(), alias,
+                    a.detached() ? CadesPackaging.DETACHED : CadesPackaging.ATTACHED);
+            Files.write(target, signed, StandardOpenOption.CREATE_NEW);
+            out.println("İmzalandı (CAdES-BES" + (a.detached() ? ", ayrık" : "") + "): " + target);
+            return 0;
+        } catch (TokenException | IOException e) {
+            err.println("Hata: " + e.getMessage());
+            return 1;
+        }
+    }
+
+    /** --alias verilmemişse imzaya uygun tek sertifikayı seçer; birden fazlaysa kullanıcıdan seçim ister. */
+    static String chooseAlias(SigningToken token, CliArgs a, PrintStream err) throws TokenException {
+        List<CertificateInfo> candidates = token.listCertificates().stream()
+                .filter(CertificateInfo::isSigningCandidate)
+                .filter(c -> a.alias().map(c.alias()::equals).orElse(true))
+                .toList();
+        if (candidates.size() == 1) {
+            return candidates.get(0).alias();
+        }
+        if (candidates.isEmpty()) {
+            err.println("Hata: imzaya uygun sertifika bulunamadı"
+                    + a.alias().map(x -> " (alias: " + x + ")").orElse("") + ". esign list-certs --login ile kontrol edin.");
+        } else {
+            err.println("Hata: birden fazla imza sertifikası var; --alias ile seçin: "
+                    + candidates.stream().map(CertificateInfo::alias).toList());
+        }
+        return null;
+    }
+
+    private static Path resolveLibrary(CliArgs a, PrintStream err) {
+        var locator = new Pkcs11LibraryLocator();
+        Path lib = a.library().or(locator::locate).orElse(null);
+        if (lib == null) {
+            err.println("Hata: PKCS#11 kütüphanesi bulunamadı. --lib verin veya "
+                    + Pkcs11LibraryLocator.ENV_VAR + " ayarlayın.");
+            err.println("Denenen yollar: " + locator.candidates());
+        }
+        return lib;
+    }
+
+    private static char[] readPin(PrintStream err) {
+        Console console = System.console();
+        if (console == null) {
+            err.println("Hata: PIN için etkileşimli terminal gerekir.");
+            return null;
+        }
+        return console.readPassword("PIN: ");
     }
 }

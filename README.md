@@ -5,7 +5,8 @@ CAdES, PAdES ve XAdES imza üretmeyi ve doğrulamayı hedefleyen açık kaynak J
 
 *Open-source Java platform for qualified e-signatures (CAdES/PAdES/XAdES) on Linux and macOS via PKCS#11 smart cards.*
 
-> **Durum: Faz 1 / 7.** Şu an yalnızca karttaki sertifikaları listeler; henüz imza atmaz.
+> **Durum: Faz 2 / 7.** Karttaki sertifikaları listeler ve CAdES-BES imza (`.imz` / `.p7s`) üretir.
+> Zaman damgası (T), uzun dönem doğrulama (LT/LTA) ve İmzager uyumluluk testleri sonraki fazlardadır.
 > Bu yazılım BTK veya TÜBİTAK tarafından onaylanmış/sertifikalandırılmış değildir.
 > Güvenli elektronik imzanın hukuki geçerliliği (5070 sayılı Kanun) nitelikli sertifika ve
 > güvenli imza oluşturma aracından gelir; yazılımdan değil.
@@ -16,6 +17,7 @@ CAdES, PAdES ve XAdES imza üretmeyi ve doğrulamayı hedefleyen açık kaynak J
 | --- | --- |
 | `esign-core` | Port arayüzleri (`SigningToken`) ve alan modeli; dış bağımlılığı yok |
 | `esign-token-pkcs11` | JDK SunPKCS11 ile kart erişimi (AKİS, SoftHSM, diğer PKCS#11) |
+| `esign-cades` | CAdES-BES imza üretimi ([EU DSS](https://github.com/esig/dss), LGPL-2.1) |
 | `esign-cli` | `esign` komut satırı aracı |
 
 ## Gereksinimler (Debian / Ubuntu / Kali)
@@ -36,7 +38,18 @@ java -jar esign-cli/target/esign.jar list-certs --login
 java -jar esign-cli/target/esign.jar list-certs --lib /yol/libakisp11.so --login
 ```
 
-PIN yalnızca terminalden sorulur; `--pin` argümanı bilerek desteklenmez.
+# Word, Excel, PDF veya herhangi bir dosyayı imzala (İmzager gibi bütünleşik .imz):
+java -jar esign-cli/target/esign.jar sign --in rapor.docx
+# Ayrık imza (orijinal dosya değişmez, rapor.docx.p7s oluşur):
+java -jar esign-cli/target/esign.jar sign --in rapor.docx --detached
+```
+
+PIN yalnızca terminalden sorulur; `--pin` argümanı bilerek desteklenmez. Var olan çıktı dosyasının üzerine yazılmaz.
+
+İmzayı OpenSSL ile kriptografik olarak kontrol etmek (sertifika zinciri doğrulaması Faz 5'te):
+
+```bash
+openssl cms -verify -inform DER -in rapor.docx.imz -noverify -out /dev/null
 
 ## Kartsız test (SoftHSM2)
 
@@ -49,7 +62,7 @@ mvn -B verify          # entegrasyon testi de çalışır
 ## Yol haritası
 
 1. ✅ Linux'ta kart erişimi, sertifika listeleme
-2. CAdES-BES imza (`.imz`)
+2. ✅ CAdES-BES imza (`.imz`, `.p7s`)
 3. PAdES ve XAdES
 4. RFC 3161 zaman damgası
 5. OCSP/CRL, zincir, LT/LTA

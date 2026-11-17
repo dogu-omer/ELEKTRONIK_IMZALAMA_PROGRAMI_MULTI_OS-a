@@ -34,4 +34,21 @@ class CliArgsTest {
         assertThrows(IllegalArgumentException.class, () -> CliArgs.parse(List.of("list-certs", "--slot", "-1")));
         assertThrows(IllegalArgumentException.class, () -> CliArgs.parse(List.of("list-certs", "--slot")));
     }
+
+    @Test
+    void signDefaultsToImzOutput() {
+        var a = CliArgs.parse(List.of("sign", "--in", "/tmp/rapor.docx"));
+        assertEquals(Path.of("/tmp/rapor.docx.imz"), a.outputPath());
+    }
+
+    @Test
+    void detachedDefaultsToP7s() {
+        var a = CliArgs.parse(List.of("sign", "--in", "/tmp/a.xlsx", "--detached"));
+        assertEquals(Path.of("/tmp/a.xlsx.p7s"), a.outputPath());
+    }
+
+    @Test
+    void signRequiresInput() {
+        assertThrows(IllegalArgumentException.class, () -> CliArgs.parse(List.of("sign")));
+    }
 }
