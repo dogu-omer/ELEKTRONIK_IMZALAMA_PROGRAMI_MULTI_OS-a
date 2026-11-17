@@ -1,5 +1,11 @@
 # Değişiklik günlüğü / Changelog
 
+## esign v0.6.0 — Docker
+
+- `Dockerfile` (çok aşamalı; kök olmayan kullanıcı, sağlık denetimi) ve `docker-compose.yml` (salt okunur kök,
+  `cap_drop: ALL`, yalnızca 127.0.0.1). PostgreSQL gerekmediği için eklenmedi.
+- CI'da görüntü derleme ve duman testi; sürümlerde `ghcr.io/dogu-omer/esign-api` yayımı.
+
 ## esign v0.5.0 — REST API
 
 - Yeni `esign-api` modülü (Spring Boot 4.1, OpenAPI 3.1 / Swagger UI): `POST /api/v1/validations` doğrulama,

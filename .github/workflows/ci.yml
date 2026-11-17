@@ -22,3 +22,15 @@ jobs:
           sed 's/^export //; s/'"'"'//g' "$RUNNER_TEMP/softhsm.env" >> "$GITHUB_ENV"
       - name: Build and test
         run: mvn -B -ntp verify
+  docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -t esign-api:ci .
+      - name: Smoke test
+        run: |
+          docker run -d --name api -p 8080:8080 --read-only --tmpfs /tmp --cap-drop ALL esign-api:ci
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/actuator/health && break; sleep 2; done
+          curl -fsS http://127.0.0.1:8080/v3/api-docs | grep -q '/api/v1/signatures/prepare'
+          docker rm -f api

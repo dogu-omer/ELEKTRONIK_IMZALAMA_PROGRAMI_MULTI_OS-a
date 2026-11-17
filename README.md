@@ -12,7 +12,7 @@ damgası** ile BES veya T profilinde imza atar. İmza motoru olarak Avrupa Komis
 with a PKCS#11 smart card or USB token (e.g. Turkish AKİS cards), with optional **RFC 3161
 timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 319 102-1, OCSP/CRL). Built on the European Commission's [EU DSS](https://github.com/esig/dss).
 
-> ⚠️ **Durum / Status: v0.5.0 — Faz 6 / 7 sürüyor.** İmza üretimi, doğrulama, OCSP/CRL, LT/LTA, görünür PDF imzası ve REST API hazırdır;
+> ⚠️ **Durum / Status: v0.6.0 — Faz 6 / 7 sürüyor.** İmza üretimi, doğrulama, OCSP/CRL, LT/LTA, görünür PDF imzası, REST API ve Docker hazırdır;
 > **İmzager karşılıklı testleri ve gerçek ESHS/Kamu SM ortamında uçtan uca test henüz yapılmadı.** Bu yazılım
 > BTK veya TÜBİTAK tarafından onaylanmış değildir. / Signing, validation, revocation checks and LT/LTA
 > work; İmzager interoperability and end-to-end tests against real Turkish CAs/TSAs are not done yet.
@@ -34,6 +34,7 @@ timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 
 10. [Yol haritası / Roadmap](#10-yol-haritası--roadmap)
 11. [Lisans / License](#11-lisans--license)
 12. [REST API](#12-rest-api)
+13. [Docker](#13-docker)
 
 ---
 
@@ -53,6 +54,7 @@ timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 
 | İmzager karşılıklı uyumluluk / interoperability | ⏳ Faz 6 | — |
 | REST API: doğrulama + iki aşamalı imza (hazırla → kartta imzala → birleştir), OpenAPI | ✅ v0.5.0 | OpenAPI 3.1 |
 | Sunucu üzerinden imza (`esign sign --server`) / sign via API | ✅ v0.5.0 | — |
+| Docker görüntüsü ve docker-compose / container image | ✅ v0.6.0 | OCI |
 
 ## 2. Kurulum / Installation
 
@@ -320,7 +322,7 @@ imzalayıcı değişir. Akademik açıklama: [docs/makale-taslagi.md](docs/makal
 4. ✅ RFC 3161 zaman damgası (isteğe bağlı, T profili), `.deb` / macOS paketleri
 5. ✅ İmza doğrulama (`esign verify`), OCSP/CRL, zincir, LT/LTA
 6. ⏳ İmzager karşılıklı uyumluluk testleri, ✅ görünür PDF imzası (v0.4.0), ESHS kimlik doğrulamalı zaman damgası, masaüstü arayüz
-7. ✅ REST API (Spring Boot, v0.5.0), ⏳ Docker
+7. ✅ REST API (Spring Boot, v0.5.0), ✅ Docker (v0.6.0)
 
 ## 11. Lisans / License
 
@@ -373,3 +375,22 @@ Veritabanı gerekmez: API durumsuzdur; bekleyen imzalar yalnızca bellekte ve k�
 yazılmaz. Dosya sınırı 25 MB. İnternete açarken önüne TLS sonlandıran bir ters vekil (nginx, Caddy) koyun ve
 `ESIGN_API_KEY` tanımlayın. *No database needed. Put a TLS reverse proxy in front and set an API key before
 exposing it.* PAdES görünür imza kutusu şimdilik yalnızca CLI'dadır.
+
+## 13. Docker
+
+API, kök olmayan kullanıcıyla, salt okunur dosya sisteminde ve tüm Linux yetkileri düşürülmüş olarak çalışır.
+PostgreSQL gerekmez (API durumsuzdur). *Runs as non-root, read-only root FS, all capabilities dropped; no
+database required.*
+
+```bash
+cp .env.example .env            # ESIGN_API_KEY=$(openssl rand -base64 32) gibi değerleri girin; .env git'e girmez
+docker compose up -d            # yalnızca 127.0.0.1:8080'de dinler
+curl http://localhost:8080/actuator/health
+
+# Hazır görüntü (her sürümde) / prebuilt image on each release
+docker run -d -p 127.0.0.1:8080:8080 -e ESIGN_API_KEY=... ghcr.io/dogu-omer/esign-api:latest
+```
+
+Güvenilir kök sertifikaları (Kamu SM vb.) `./trust` klasörüne koyup `.env` içinde
+`ESIGN_TRUST_DIR_IN_CONTAINER=/trust` yazın. Zaman damgası için `ESIGN_TSA_URL`. CI her gönderimde görüntüyü
+derleyip sağlık ve OpenAPI denetimi yapar; sürümlerde `ghcr.io/dogu-omer/esign-api:<sürüm>` yayımlanır.

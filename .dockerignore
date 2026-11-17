@@ -1,0 +1,9 @@
+.git
+**/target
+dist
+.env
+*.env
+!.env.example
+**/*.p12
+**/*.pfx
+**/*.key

@@ -13,3 +13,5 @@ target/
 *.pfx
 softhsm2.conf
 dist/
+# API kök sertifika klasörü (yerel)
+trust/

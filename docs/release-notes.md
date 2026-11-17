@@ -1,22 +1,18 @@
-## esign v0.5.0 — REST API
+## esign v0.6.0 — Docker
 
 **TR**
-- Yeni **esign-api** (Spring Boot): imza doğrulama ve iki aşamalı imza. Sunucu imzalanacak veriyi hazırlar,
-  kullanıcı kendi kartıyla imzalar, sunucu imzayı doğrulayıp imzalı belgeyi üretir. **Özel anahtar ve PIN
-  sunucuya gitmez.** OpenAPI belgesi `/swagger-ui.html` adresindedir. Veritabanı gerekmez.
-- `esign sign --server http://sunucu:8080`: kart bu bilgisayarda, imza sunucu üzerinden.
-- `esign-api.jar` bu sürüme eklendi: `java -jar esign-api.jar`. Ayarlar ortam değişkenleriyle
-  (`ESIGN_API_KEY`, `ESIGN_TSA_URL`, `ESIGN_TRUST_DIR`).
-- 98 otomatik test.
+- REST API için **Docker görüntüsü** ve **docker-compose**: `cp .env.example .env && docker compose up -d`.
+  Kök olmayan kullanıcı, salt okunur dosya sistemi, tüm yetkiler düşürülmüş, yalnızca 127.0.0.1'de dinler.
+- Hazır görüntü: `docker pull ghcr.io/dogu-omer/esign-api:0.6.0`.
+- Veritabanı gerekmez (API durumsuzdur). v0.5.0'daki REST API ve `esign sign --server` aynen geçerlidir.
 
 **EN**
-- New Spring Boot **REST API**: validation plus two-step signing (prepare → sign on the client's card →
-  complete). The private key and PIN never reach the server. OpenAPI at `/swagger-ui.html`. No database.
-- `esign sign --server <url>` uses the API with the local card. `esign-api.jar` attached.
+- Container image and docker-compose for the REST API (non-root, read-only FS, no capabilities, localhost
+  only). Prebuilt image on GHCR. No database needed.
 
 **Bilinen sınırlar / Known limits:** İmzager karşılıklı testleri ve gerçek Kamu SM/ESHS ortamında uçtan uca test
-yapılmadı. API'de görünür PDF imza kutusu yok (CLI'da var). Kök sertifikalar pakete eklenmez. ESHS kimlik
-doğrulamalı zaman damgası desteklenmez. macOS paketi notarize edilmemiştir. Yazılım herhangi bir kurum
-tarafından sertifikalandırılmamıştır.
+yapılmadı. İnternete açmadan önce TLS'li ters vekil ve `ESIGN_API_KEY` gerekir. ESHS kimlik doğrulamalı zaman
+damgası desteklenmez. macOS paketi notarize edilmemiştir. Yazılım herhangi bir kurum tarafından
+sertifikalandırılmamıştır.
 
-Kurulum: README → "Kurulum / Installation", "REST API". Bütünlük: `sha256sum -c SHA256SUMS.txt --ignore-missing`.
+Bütünlük: `sha256sum -c SHA256SUMS.txt --ignore-missing`.

@@ -1,0 +1,26 @@
+# esign REST API. Başlatma / start:  docker compose up -d
+# Belgeler: http://localhost:8080/swagger-ui.html   Sağlık / health: /actuator/health
+# Ayarlar .env dosyasından okunur (.env.example'a bakın; .env git'e girmez).
+# Veritabanı gerekmez: API durumsuzdur, bekleyen imzalar bellekte ESIGN_SESSION_TTL kadar tutulur.
+services:
+  esign-api:
+    build: .
+    image: esign-api:local
+    ports:
+      - "127.0.0.1:${ESIGN_PORT:-8080}:8080"   # yalnızca yerel; dışa açmak için önüne TLS'li ters vekil koyun
+    environment:
+      ESIGN_TSA_URL: ${ESIGN_TSA_URL:-}
+      ESIGN_TRUST_DIR: ${ESIGN_TRUST_DIR_IN_CONTAINER:-}
+      ESIGN_OFFLINE: ${ESIGN_OFFLINE:-false}
+      ESIGN_API_KEY: ${ESIGN_API_KEY:-}
+      ESIGN_SESSION_TTL: ${ESIGN_SESSION_TTL:-10m}
+      ESIGN_MAX_SESSIONS: ${ESIGN_MAX_SESSIONS:-200}
+    volumes:
+      - ${ESIGN_TRUST_HOST_DIR:-./trust}:/trust:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    restart: unless-stopped
