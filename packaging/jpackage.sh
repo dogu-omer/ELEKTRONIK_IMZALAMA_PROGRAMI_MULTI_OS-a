@@ -56,8 +56,6 @@ main-class=io.github.doguomer.esign.desktop.DesktopApp
 description=esign - Elektronik Imza (masaustu)
 linux-shortcut=true
 win-console=false
-win-menu=true
-win-shortcut=true
 PROPS
 
 case "$TYPE" in
@@ -67,10 +65,10 @@ case "$TYPE" in
               --add-launcher "esign-gui=$STAGE/esign-gui.properties") ;;
   rpm) ARGS+=(--linux-package-name esign --linux-app-category Utilities
               --add-launcher "esign-gui=$STAGE/esign-gui.properties") ;;
-  msi|exe) # Ana başlatıcı esign.exe konsol uygulamasıdır (komut satırı); esign-gui.exe penceredir ve Başlat menüsü +
-           # masaüstü kısayolu alır. Kurulum klasörü PATH'e eklenir (packaging/windows/main.wxs).
-           # Main launcher is a console app; esign-gui gets Start menu/desktop shortcuts; install dir goes to PATH.
-           ARGS+=(--win-console --win-dir-chooser --win-menu-group "esign"
+  msi|exe) # Ana başlatıcı esign.exe konsol uygulamasıdır (komut satırı); esign-gui.exe penceredir.
+           # Kısayollar ve PATH packaging/windows/main.wxs içinde tanımlıdır (jpackage'ın --win-menu seçeneği ana
+           # başlatıcıya da kısayol koyardı). Shortcuts + PATH are defined in main.wxs.
+           ARGS+=(--win-console --win-dir-chooser
               --win-upgrade-uuid "83e6b761-5324-41fe-bb3c-9b0039cf21ad"
               --win-help-url "https://github.com/dogu-omer/ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS-a"
               --resource-dir "$(p "$ROOT/packaging/windows")"

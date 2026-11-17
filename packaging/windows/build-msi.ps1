@@ -76,9 +76,13 @@ Write-Host 'PATH tamam / ok'
 $lnk = Get-ChildItem "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" -Recurse -Filter 'esign-gui*.lnk' -ErrorAction SilentlyContinue
 if (-not $lnk) { throw 'Başlat menüsü kısayolu esign-gui bulunamadı' }
 Write-Host "Kısayol / shortcut: $($lnk.FullName -join ', ')"
+$cli = Get-ChildItem "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" -Recurse -Filter 'esign.lnk' -ErrorAction SilentlyContinue
+if ($cli) { throw "Komut satırı başlatıcısı için gereksiz kısayol: $($cli.FullName)" }
+if (-not (Test-Path "$env:PUBLIC\Desktop\esign-gui.lnk")) { throw 'Masaüstü kısayolu yok / no desktop shortcut' }
 
 # Kaldırma da denenir; PATH temizlenmeli / uninstall must remove PATH entry
 $p = Start-Process msiexec.exe -ArgumentList "/x `"$msi`" /qn /norestart" -Wait -PassThru
 if ($p.ExitCode -ne 0) { throw "kaldırma çıkış kodu $($p.ExitCode)" }
 if ([Environment]::GetEnvironmentVariable('PATH', 'Machine') -like "*$dir*") { throw 'Kaldırınca PATH temizlenmedi' }
+if (Test-Path "$env:PUBLIC\Desktop\esign-gui.lnk") { throw 'Kaldırınca masaüstü kısayolu kaldı' }
 Write-Host 'Kurulum/kaldırma testi geçti / install+uninstall test passed'

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- jpackage (JDK 21, WiX 3) varsayılan main.wxs şablonunun kopyası; tek fark: kurulum klasörü sistem PATH'ine
-     eklenir (kaldırılınca çıkarılır), böylece komut isteminde `esign` çalışır.
-     Copy of the JDK 21 jpackage main.wxs template; only change: INSTALLDIR is appended to the system PATH. -->
+<!-- jpackage (JDK 21, WiX 3) varsayılan main.wxs şablonunun kopyası. Eklenenler: kurulum klasörü sistem PATH'ine
+     eklenir (kaldırılınca çıkarılır) ve yalnızca masaüstü arayüzü (esign-gui) için Başlat menüsü + masaüstü
+     kısayolu oluşturulur (jpackage ana komut satırı başlatıcısına da kısayol koyardı).
+     Copy of the JDK 21 jpackage main.wxs template plus: INSTALLDIR on PATH, shortcuts for esign-gui only. -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
      xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
 
@@ -80,7 +81,26 @@
       <ComponentGroupRef Id="Files"/>
       <ComponentGroupRef Id="FileAssociations"/>
       <ComponentRef Id="EsignPathEnv"/>
+      <ComponentRef Id="EsignGuiShortcuts"/>
     </Feature>
+
+    <DirectoryRef Id="TARGETDIR">
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="EsignMenuDir" Name="esign"/>
+      </Directory>
+      <Directory Id="DesktopFolder"/>
+    </DirectoryRef>
+
+    <DirectoryRef Id="EsignMenuDir">
+      <Component Id="EsignGuiShortcuts" Guid="{B57BD9AF-4B4D-4B44-BA53-CD63827063EE}" Win64="yes">
+        <Shortcut Id="EsignGuiMenuLnk" Name="esign-gui" Description="esign - Elektronik Imza"
+                  Target="[INSTALLDIR]esign-gui.exe" WorkingDirectory="INSTALLDIR"/>
+        <Shortcut Id="EsignGuiDesktopLnk" Directory="DesktopFolder" Name="esign-gui" Description="esign - Elektronik Imza"
+                  Target="[INSTALLDIR]esign-gui.exe" WorkingDirectory="INSTALLDIR"/>
+        <RemoveFolder Id="RemoveEsignMenuDir" On="uninstall"/>
+        <RegistryValue Root="HKMU" Key="Software\esign" Name="shortcuts" Type="integer" Value="1" KeyPath="yes"/>
+      </Component>
+    </DirectoryRef>
 
     <DirectoryRef Id="INSTALLDIR">
       <Component Id="EsignPathEnv" Guid="{1E6301B7-152F-4D9C-A744-528C7AAAFE51}" KeyPath="yes" Win64="yes">
