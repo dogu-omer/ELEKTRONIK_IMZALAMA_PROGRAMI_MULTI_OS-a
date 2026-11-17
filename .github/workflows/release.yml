@@ -40,7 +40,9 @@ jobs:
       - run: mvn -B -ntp verify   # kart testleri SoftHSM olmadan atlanır
       - run: packaging/jpackage.sh pkg
       - name: Rename
-        run: for f in dist/*.pkg; do mv "$f" "${f%.pkg}-macos-arm64.pkg"; done
+        run: |
+          V="$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' pom.xml | head -1)"
+          for f in dist/*.pkg; do mv "$f" "dist/esign-$V-macos-arm64.pkg"; done
       - uses: actions/upload-artifact@v4
         with: { name: macos, path: dist/*.pkg }
   publish:
