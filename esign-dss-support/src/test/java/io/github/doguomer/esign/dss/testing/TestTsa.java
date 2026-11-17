@@ -37,6 +37,12 @@ public final class TestTsa implements TSPSource {
     private final KeyPair keys;
     public int calls;
 
+    /** TestPki tarafından verilen sertifika ve anahtarla. */
+    public TestTsa(X509Certificate cert, KeyPair keys) {
+        this.cert = cert;
+        this.keys = keys;
+    }
+
     public TestTsa() throws Exception {
         var kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
@@ -59,8 +65,9 @@ public final class TestTsa implements TSPSource {
                             .get(new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha256)),
                     new ASN1ObjectIdentifier("1.3.6.1.4.1.99999.1"));
             gen.addCertificates(new JcaCertStore(List.of(cert)));
-            var req = new TimeStampRequestGenerator()
-                    .generate(new ASN1ObjectIdentifier(digestAlgorithm.getOid()), digest);
+            var reqGen = new TimeStampRequestGenerator();
+            reqGen.setCertReq(true); // gerçek ESHS gibi TSA sertifikasını yanıta ekle
+            var req = reqGen.generate(new ASN1ObjectIdentifier(digestAlgorithm.getOid()), digest);
             TimeStampResponse resp = new TimeStampResponseGenerator(gen, TSPAlgorithms.ALLOWED)
                     .generate(req, BigInteger.valueOf(++calls), new Date());
             return new TimestampBinary(resp.getTimeStampToken().getEncoded());

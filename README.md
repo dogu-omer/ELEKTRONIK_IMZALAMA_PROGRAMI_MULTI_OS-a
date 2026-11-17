@@ -10,12 +10,13 @@ damgası** ile BES veya T profilinde imza atar. İmza motoru olarak Avrupa Komis
 
 **EN —** Open-source Java command-line tool that creates **CAdES**, **PAdES** and **XAdES** signatures
 with a PKCS#11 smart card or USB token (e.g. Turkish AKİS cards), with optional **RFC 3161
-timestamping** (BES or T profile). Built on the European Commission's [EU DSS](https://github.com/esig/dss).
+timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 319 102-1, OCSP/CRL). Built on the European Commission's [EU DSS](https://github.com/esig/dss).
 
-> ⚠️ **Durum / Status: v0.2.0 — Faz 4 / 7.** İmza üretimi hazırdır; **imza doğrulama, OCSP/CRL, LT/LTA
-> ve İmzager karşılıklı testleri henüz yoktur.** Bu yazılım BTK veya TÜBİTAK tarafından onaylanmış
-> değildir. / Signing works; validation, revocation checks, LT/LTA and İmzager interoperability
-> tests are not done yet. Not certified by any authority.
+> ⚠️ **Durum / Status: v0.3.0 — Faz 5 / 7.** İmza üretimi, doğrulama, OCSP/CRL ve LT/LTA hazırdır;
+> **İmzager karşılıklı testleri ve gerçek ESHS/Kamu SM ortamında uçtan uca test henüz yapılmadı.** Bu yazılım
+> BTK veya TÜBİTAK tarafından onaylanmış değildir. / Signing, validation, revocation checks and LT/LTA
+> work; İmzager interoperability and end-to-end tests against real Turkish CAs/TSAs are not done yet.
+> Not certified by any authority.
 
 ---
 
@@ -45,8 +46,8 @@ timestamping** (BES or T profile). Built on the European Commission's [EU DSS](h
 | XAdES-BES enveloped (XML içine) | ✅ | ETSI EN 319 132 |
 | Zaman damgalı T profili / T profile with timestamp | ✅ isteğe bağlı / optional | RFC 3161 |
 | Gömülü JRE ile `.deb` ve macOS `.pkg` | ✅ | — |
-| İmza doğrulama, OCSP/CRL, zincir / Validation, revocation | ⏳ Faz 5 | RFC 6960, RFC 5280 |
-| LT / LTA (uzun dönem arşiv) | ⏳ Faz 5 | ETSI EN 319 1x2 |
+| İmza doğrulama (`esign verify`), zincir, OCSP/CRL / Validation, revocation | ✅ | ETSI EN 319 102-1, RFC 6960, RFC 5280 |
+| LT / LTA (uzun dönem arşiv) / long-term archival | ✅ `--level lt\|lta` | ETSI EN 319 122/132/142 |
 | İmzager karşılıklı uyumluluk / interoperability | ⏳ Faz 6 | — |
 | REST API | ⏳ Faz 7 | — |
 
@@ -150,6 +151,13 @@ esign sign --in sozlesme.pdf --format cades
 
 # Zaman damgalı (T profili) / with timestamp (T profile)
 esign sign --in sozlesme.pdf --tsa http://zd.ornek-eshs.com.tr
+
+# Uzun dönem (LT: OCSP/CRL gömülü, LTA: + arşiv zaman damgası) / long-term profiles
+esign sign --in sozlesme.pdf --tsa http://zd.ornek-eshs.com.tr --level lta --trust ~/kamusm-kokler/
+
+# Doğrulama / validation
+esign verify --in rapor.docx.imz --trust ~/kamusm-kokler/
+esign verify --in rapor.docx.p7s --original rapor.docx --trust ~/kamusm-kokler/ --report rapor.xml
 ```
 
 | Biçim / Format | Varsayılan çıktı / Default output | Ne zaman / When |
@@ -164,13 +172,35 @@ Kurallar / Rules:
 - PIN yalnızca terminalden sorulur; `--pin` argümanı bilerek yoktur. / PIN is only read from the terminal.
 - Var olan çıktı dosyasının üzerine yazılmaz. / Existing output files are never overwritten.
 - Kartta birden çok imza sertifikası varsa `--alias` ile seçin. / Use `--alias` if several signing certs exist.
-- Çıkış kodları / exit codes: `0` başarı/success, `1` kart veya dosya hatası/token or I/O error, `2` kullanım hatası/usage error.
+- Çıkış kodları / exit codes: `0` başarı veya geçerli/success or valid, `1` kart veya dosya hatası/token or I/O error,
+  `2` kullanım hatası/usage error, `3` doğrulama belirsiz/indeterminate, `4` imza geçersiz/invalid.
 
-Kriptografik kontrol (tam doğrulama Faz 5'te) / quick cryptographic check:
+### İmza profilleri / Signature levels
 
-```bash
-openssl cms -verify -inform DER -in rapor.docx.imz -noverify -out /dev/null
-```
+| `--level` | İçerik / Content | Gerekenler / Needs |
+| --- | --- | --- |
+| `bes` (varsayılan, TSA yoksa) | İmza + sertifika / signature + certificate | Kart |
+| `t` (varsayılan, TSA varsa) | + RFC 3161 imza zaman damgası | `--tsa` |
+| `lt` | + zincir ve OCSP/CRL yanıtları imzaya gömülür / chain and revocation data embedded | `--tsa`, `--trust`, ağ (OCSP/CRL) |
+| `lta` | + arşiv zaman damgası; süre dolmadan yeniden damgalanabilir / archive timestamp | `--tsa`, `--trust`, ağ |
+
+### Doğrulama / Validation (`esign verify`)
+
+EU DSS ile ETSI EN 319 102-1 doğrulaması yapılır: belge özeti, imza değeri, sertifika zinciri, güvenilir kök,
+OCSP/CRL iptal durumu ve zaman damgaları. *Full ETSI EN 319 102-1 validation via EU DSS.*
+
+| Sonuç / Verdict | Anlamı / Meaning | Çıkış kodu |
+| --- | --- | --- |
+| GEÇERLİ / valid | `TOTAL_PASSED` | 0 |
+| BELİRSİZ / indeterminate | Güvenilir kök yok, iptal bilgisi alınamadı vb. / no trust anchor, no revocation data | 3 |
+| GEÇERSİZ / invalid | Belge değişmiş, sertifika iptal edilmiş vb. / document changed, certificate revoked | 4 |
+
+- **Güvenilir kökler / trust anchors:** `--trust <dosya|dizin>` veya `ESIGN_TRUST_DIR`. Kamu SM (ve diğer ESHS)
+  kök sertifikalarını sağlayıcının resmî sitesinden indirip parmak izini doğrulayarak bu dizine koyun; program
+  kök sertifika **dağıtmaz**. *Download root certificates from the provider and verify fingerprints; none are bundled.*
+- `--offline`: ağa çıkılmaz; yalnızca imzanın içindeki veriler (LT/LTA) kullanılır. *No network access.*
+- `--report rapor.xml`: denetim için DSS ayrıntılı XML raporu. *Detailed XML report for audits.*
+- Güvenilir kök verilmezse sonuç en iyi ihtimalle **BELİRSİZ** olur. *Without anchors the best result is indeterminate.*
 
 ## 5. Zaman damgası / Timestamping
 
@@ -208,8 +238,9 @@ openssl cms -verify -inform DER -in rapor.docx.imz -noverify -out /dev/null
    gelir; bu yazılım yalnızca standart biçimde imza paketi üretir. Yazılımın teknik olarak imza üretebilmesi
    tek başına hukuki uygunluk anlamına gelmez.
 2. Bu yazılım BTK, TÜBİTAK veya başka bir kurum tarafından **test edilmemiş, onaylanmamış ve sertifikalandırılmamıştır**.
-3. İmza doğrulama, iptal (OCSP/CRL) denetimi ve uzun dönem (LT/LTA) profiller henüz yoktur. Bir imzanın
-   geçerliliğine ilişkin kararı resmî bir doğrulayıcıyla (ör. İmzager) verin.
+3. `esign verify` teknik bir doğrulama raporu üretir; İmzager ile karşılıklı testler ve gerçek Kamu SM/ESHS
+   ortamında uçtan uca testler henüz yapılmamıştır. Hukuki önemi olan kararlarda sonucu resmî bir
+   doğrulayıcıyla (ör. İmzager) teyit edin.
 4. Kurumsal veya resmî kullanım öncesi kurumunuzun bilgi güvenliği ve hukuk birimine danışın.
 
 *EN: Legal effect under Turkish Law No. 5070 comes from the qualified certificate and the secure
@@ -228,7 +259,7 @@ validate signatures or check revocation, and must not be the sole basis for a le
 
 ```bash
 sudo apt install openjdk-21-jdk maven            # macOS: brew install openjdk@21 maven
-mvn -B verify                                     # 51 test
+mvn -B verify                                     # 71 test
 java -jar esign-cli/target/esign.jar help
 
 # Kartsız gerçek PKCS#11 testi (SoftHSM2) / real PKCS#11 tests without a card
@@ -254,16 +285,18 @@ Her modül tek bir işten sorumludur ve yalnızca alttaki katmana bağımlıdır
 ```text
 esign-cli ──► esign-cades ─┐
           ├─► esign-pades ─┼─► esign-dss-support ──► esign-core (SigningToken portu, bağımlılıksız)
-          ├─► esign-xades ─┘           │                    ▲
+          ├─► esign-xades ─┤           │                    ▲
+          ├─► esign-validation ┘       │                    │
           └─► esign-token-pkcs11 ──────┼────────────────────┘ (SunPKCS11 adaptörü)
-                                       └─► EU DSS (LGPL-2.1), RFC 3161 istemcisi (Timestamping)
+                                       └─► EU DSS (LGPL-2.1): RFC 3161, OCSP/CRL, ETSI doğrulama
 ```
 
 | Modül | Görev / Responsibility |
 | --- | --- |
 | `esign-core` | `SigningToken` portu, `CertificateInfo`; dış bağımlılık yok |
 | `esign-token-pkcs11` | JDK SunPKCS11 ile kart erişimi (AKİS, SoftHSM, OpenSC) |
-| `esign-dss-support` | Kart ↔ EU DSS köprüsü, `Timestamping` (BES/T seçimi) |
+| `esign-dss-support` | Kart ↔ EU DSS köprüsü; `SignatureProfile` (B/T/LT/LTA), `Timestamping`, `TrustSettings` (kökler, OCSP/CRL) |
+| `esign-validation` | `SignatureVerifier`: ETSI EN 319 102-1 doğrulama, sade sonuç + XML rapor |
 | `esign-cades` / `-pades` / `-xades` | Biçime özgü imza üreticiler |
 | `esign-cli` | `esign` komut satırı |
 
@@ -276,7 +309,7 @@ imzalayıcı değişir. Akademik açıklama: [docs/makale-taslagi.md](docs/makal
 2. ✅ CAdES-BES (`.imz`, `.p7s`)
 3. ✅ PAdES-BES ve XAdES-BES
 4. ✅ RFC 3161 zaman damgası (isteğe bağlı, T profili), `.deb` / macOS paketleri
-5. ⏳ İmza doğrulama, OCSP/CRL, zincir, LT/LTA; Türkiye kök sertifikaları
+5. ✅ İmza doğrulama (`esign verify`), OCSP/CRL, zincir, LT/LTA
 6. ⏳ İmzager karşılıklı uyumluluk testleri, görünür PDF imzası, ESHS kimlik doğrulamalı zaman damgası, masaüstü arayüz
 7. ⏳ REST API (Spring Boot), Docker
 

@@ -15,10 +15,12 @@ sorunları doğurmaktadır. Bu çalışmada, Avrupa Komisyonu'nun açık kaynak 
 kurulu, PKCS#11 aracılığıyla akıllı kart kullanan ve CAdES, PAdES ve XAdES biçimlerinde imza üreten
 modüler bir platform sunulmaktadır. Platform, altıgen (ports & adapters) mimariyle kart erişimini imza
 biçimlerinden ayırır; isteğe bağlı RFC 3161 zaman damgası ile ETSI baseline B (BES) ve T profillerini
-destekler. Gerçek PKCS#11 davranışı SoftHSM2 sanal belirteci ile otomatik testlere dahil edilmiş, 51
-birim ve entegrasyon testi sürekli tümleştirme ortamında başarıyla çalıştırılmıştır. Çalışma ayrıca
-yazılımın teknik olarak imza üretmesi ile hukuki geçerlilik arasındaki farkı tartışmakta ve uzun dönem
-doğrulama (LT/LTA) ile İmzager karşılıklı uyumluluğu için bir yol haritası önermektedir.
+destekler; uzun dönem LT/LTA profillerini ve ETSI EN 319 102-1 uyumlu imza doğrulamasını (zincir,
+OCSP/CRL, zaman damgası) sağlar. Gerçek PKCS#11 davranışı SoftHSM2 sanal belirteci, iptal ve uzun dönem
+senaryoları ise bellek içi bir test PKI'si (kök CA, CRL, RFC 3161 sunucusu) ile otomatik testlere dahil
+edilmiş; 71 birim ve entegrasyon testi başarıyla çalıştırılmıştır. Çalışma ayrıca yazılımın teknik olarak
+imza üretmesi ile hukuki geçerlilik arasındaki farkı tartışmakta ve İmzager karşılıklı uyumluluğu için bir
+yol haritası önermektedir.
 
 **Anahtar kelimeler:** elektronik imza, CAdES, PAdES, XAdES, PKCS#11, zaman damgası, 5070 sayılı Kanun, açık kaynak, GNU/Linux
 
@@ -30,10 +32,11 @@ proprietary libraries, which limits portability and auditability for GNU/Linux a
 paper presents a modular, open-source platform built on the European Commission's EU DSS library that
 signs with smart cards via PKCS#11 and produces CAdES, PAdES and XAdES signatures. A hexagonal
 architecture separates card access from signature formats, and optional RFC 3161 timestamping selects
-between the ETSI baseline B and T levels. Real PKCS#11 behaviour is exercised in continuous integration
-through a SoftHSM2 virtual token; 51 unit and integration tests pass. We discuss the gap between
-technically producing a signature and its legal effect, and outline a roadmap towards long-term
-validation (LT/LTA) and interoperability with the reference client İmzager.
+between the ETSI baseline B and T levels; LT/LTA levels and ETSI EN 319 102-1 validation (chain,
+OCSP/CRL, timestamps) are provided. Real PKCS#11 behaviour is exercised through a SoftHSM2 virtual token
+and revocation scenarios through an in-memory test PKI; 71 unit and integration tests pass. We discuss the
+gap between technically producing a signature and its legal effect, and outline a roadmap towards
+interoperability with the reference client İmzager.
 
 **Keywords:** electronic signature, CAdES, PAdES, XAdES, PKCS#11, timestamping, open source, GNU/Linux
 
@@ -91,8 +94,9 @@ kullanılan açık kaynak bir kütüphanedir ve bu çalışmada imza motoru olar
 | --- | --- | --- |
 | `esign-core` | yok | `SigningToken`, `CertificateInfo` |
 | `esign-token-pkcs11` | core, JDK SunPKCS11 | Kart oturumu, sertifika listeleme, kartta imza |
-| `esign-dss-support` | core, EU DSS | İki aşamalı DSS akışı, `Timestamping` |
+| `esign-dss-support` | core, EU DSS | İki aşamalı DSS akışı; `SignatureProfile`, `Timestamping`, `TrustSettings` |
 | `esign-cades/pades/xades` | dss-support | Biçime özgü parametreler |
+| `esign-validation` | dss-support, EU DSS | ETSI EN 319 102-1 doğrulama, sade sonuç ve XML rapor |
 | `esign-cli` | tümü | Komut satırı |
 
 ### 3.3 İmza akışı
@@ -112,6 +116,15 @@ kullanılan açık kaynak bir kütüphanedir ve bu çalışmada imza motoru olar
 (ör. kimlik doğrulamalı ESHS istemcisi) yalnızca bu sınıfa yeni bir fabrika yöntemi eklenerek
 desteklenebilir. Kimlik bilgisi içeren URL'ler güvenlik nedeniyle reddedilir.
 
+### 3.5 Uzun dönem profiller ve doğrulama
+
+`SignatureSettings` değer nesnesi profil (B/T/LT/LTA), zaman damgası ve güven ayarlarını tutarlılık
+kurallarıyla birleştirir: T ve üstü zaman damgası; LT ve LTA ayrıca güvenilir kök ve çevrimiçi iptal
+kaynağı (OCSP/CRL) ister. LT imzaya zincir ve iptal yanıtlarını gömer; LTA arşiv zaman damgası ekler.
+Doğrulama (`SignatureVerifier`) EU DSS'in ETSI EN 319 102-1 uygulamasını kullanır ve sonucu üç sade
+kategoriye (GEÇERLİ, BELİRSİZ, GEÇERSİZ) indirger; ayrıntılı XML rapor denetim için saklanabilir.
+Kök sertifikalar pakete gömülmez; kullanıcı resmî kaynaktan alır.
+
 ## 4. Uygulama
 
 Platform Java 21 ile yazılmış, EU DSS 6.5.1 ve Bouncy Castle 1.80 kullanmaktadır. Dağıtım `jpackage`
@@ -125,19 +138,22 @@ için üretilmekte, SHA-256 özetleriyle yayımlanmaktadır.
 
 Gerçek kart olmadan PKCS#11 davranışını sınamak için SoftHSM2 üzerinde, `nonRepudiation` anahtar
 kullanımına sahip sahte bir imza sertifikası oluşturan betik (`scripts/softhsm-setup.sh`) yazılmıştır.
-Zaman damgası testleri için Bouncy Castle ile bellek içi bir RFC 3161 sunucusu (`TestTsa`) kullanılmıştır.
+Zaman damgası testleri için Bouncy Castle ile bellek içi bir RFC 3161 sunucusu (`TestTsa`), iptal ve uzun
+dönem testleri için kök CA, imzacı ve TSA sertifikaları ile istek üzerine CRL üreten bir test PKI'si
+(`TestPki`) kullanılmıştır.
 
-### 5.2 Sonuçlar (v0.2.0)
+### 5.2 Sonuçlar (v0.3.0)
 
 | Test grubu | Sayı | Doğrulanan özellik |
 | --- | --- | --- |
 | Çekirdek ve PKCS#11 | 14 | Sertifika ayrıştırma, kütüphane bulma, SoftHSM'de imza |
-| Zaman damgası seçimi (`Timestamping`) | 3 | BES/T seçimi, geçersiz/kimlik bilgili URL reddi |
+| Profil ve zaman damgası ayarları | 6 | BES/T/LT/LTA tutarlılığı, geçersiz/kimlik bilgili URL reddi |
 | CAdES | 7 | Bütünleşik/ayrık imza, BES öznitelikleri, değiştirilmiş belge tespiti, T profili |
 | PAdES | 4 | ETSI.CAdES.detached, çoklu imza, artımlı güncelleme, T profili |
 | XAdES | 4 | Enveloped imza, SigningCertificateV2, SignatureTimeStamp |
-| CLI | 19 | Argüman ayrıştırma, PIN reddi, TSA seçimi |
-| **Toplam** | **51** | **51 başarılı, 0 başarısız** |
+| Doğrulama | 9 | Geçerli BES, güvenilmeyen kök, değiştirilmiş belge, T/LT/LTA, iptal edilmiş sertifika |
+| CLI | 27 | Argüman ayrıştırma, PIN reddi, TSA/profil seçimi, `verify` çıkış kodları |
+| **Toplam** | **71** | **71 başarılı, 0 başarısız** |
 
 Ek olarak `.deb` paketi temiz bir sisteme kurulmuş ve SoftHSM belirteci ile `esign sign` komutunun
 ürettiği CAdES dosyası `openssl cms -verify` ile kriptografik olarak doğrulanmıştır. Gerçek bir ESHS zaman
@@ -163,7 +179,7 @@ kapsamında olup yazılım bu verileri saklamaz veya üçüncü taraflara iletme
 
 ## 7. Sınırlılıklar
 
-- İmza doğrulama, OCSP/CRL denetimi ve LT/LTA profilleri yoktur.
+- Doğrulama ve LT/LTA, gerçek Kamu SM/ESHS altyapısında uçtan uca test edilmemiştir (yalnızca test PKI'si).
 - İmzager ile karşılıklı uyumluluk henüz ölçülmemiştir.
 - Kimlik doğrulamalı ESHS zaman damgası protokolleri desteklenmemektedir.
 - Yazılım herhangi bir kurum tarafından sertifikalandırılmamıştır.
@@ -173,9 +189,9 @@ kapsamında olup yazılım bu verileri saklamaz veya üçüncü taraflara iletme
 
 Bu çalışma, açık kaynak bileşenlerle Linux ve macOS üzerinde standartlara uygun elektronik imza
 üretmenin mümkün olduğunu ve modüler bir mimarinin mevzuat veya donanım değişikliklerine karşı
-bakım maliyetini düşürdüğünü göstermektedir. Sonraki adımlar: (1) EU DSS doğrulayıcısı ve Türkiye kök
-sertifikalarıyla doğrulama modülü, (2) LT/LTA, (3) İmzager karşılıklı test kümesi, (4) REST API ve
-masaüstü arayüz, (5) ESHS kimlik doğrulamalı zaman damgası istemcisi.
+bakım maliyetini düşürdüğünü göstermektedir. Doğrulama ve LT/LTA v0.3.0 ile eklenmiştir. Sonraki adımlar:
+(1) gerçek Kamu SM kökleri ve ESHS ile uçtan uca test, (2) İmzager karşılıklı test kümesi, (3) REST API ve
+masaüstü arayüz, (4) ESHS kimlik doğrulamalı zaman damgası istemcisi.
 
 ## Kaynaklar
 

@@ -5,11 +5,16 @@ import io.github.doguomer.esign.cades.CadesPackaging;
 import io.github.doguomer.esign.core.CertificateInfo;
 import io.github.doguomer.esign.core.SigningToken;
 import io.github.doguomer.esign.core.TokenException;
+import io.github.doguomer.esign.dss.SignatureProfile;
+import io.github.doguomer.esign.dss.SignatureSettings;
 import io.github.doguomer.esign.dss.Timestamping;
+import io.github.doguomer.esign.dss.TrustSettings;
 import io.github.doguomer.esign.pkcs11.Pkcs11Config;
 import io.github.doguomer.esign.pkcs11.Pkcs11LibraryLocator;
 import io.github.doguomer.esign.pkcs11.Pkcs11SigningToken;
 import io.github.doguomer.esign.pades.PadesBesSigner;
+import io.github.doguomer.esign.validation.SignatureVerifier;
+import io.github.doguomer.esign.validation.VerificationReport;
 import io.github.doguomer.esign.xades.XadesBesSigner;
 import java.io.Console;
 import java.io.IOException;
@@ -17,10 +22,16 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.security.cert.X509Certificate;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
-/** esign komut satırı giriş noktası. Çıkış kodları: 0 başarı, 1 token/G-Ç hatası, 2 kullanım hatası. */
+/**
+ * esign komut satırı giriş noktası. Çıkış kodları: 0 başarı/geçerli, 1 token/G-Ç hatası, 2 kullanım hatası,
+ * 3 doğrulama belirsiz, 4 imza geçersiz.
+ */
 public final class Main {
 
     private Main() {}
@@ -49,6 +60,7 @@ public final class Main {
             }
             case "list-certs" -> listCerts(a, out, err);
             case "sign" -> sign(a, out, err);
+            case "verify" -> verify(a, out, err);
             default -> {
                 err.println("Bilinmeyen komut: " + a.command());
                 err.print(CliArgs.USAGE);
@@ -89,12 +101,15 @@ public final class Main {
             err.println("Hata: çıktı zaten var, üzerine yazılmaz: " + target);
             return 1;
         }
-        Timestamping timestamping;
+        SignatureSettings settings;
         try {
-            timestamping = timestamping(a.tsa(), System.getenv(TSA_ENV));
+            settings = signatureSettings(a, timestamping(a.tsa(), System.getenv(TSA_ENV)), System.getenv(TRUST_ENV));
         } catch (IllegalArgumentException e) {
             err.println("Hata: " + e.getMessage());
             return 2;
+        } catch (IOException e) {
+            err.println("Hata: " + e.getMessage());
+            return 1;
         }
         Path lib = resolveLibrary(a, err);
         if (lib == null) {
@@ -113,15 +128,15 @@ public final class Main {
             String name = in.getFileName().toString();
             SignFormat format = a.effectiveFormat();
             byte[] signed = switch (format) {
-                case PADES -> new PadesBesSigner(token, timestamping).sign(content, name, alias, a.reason().orElse(null));
-                case XADES -> new XadesBesSigner(token, timestamping).sign(content, name, alias);
-                default -> new CadesBesSigner(token, timestamping).sign(content, name, alias,
+                case PADES -> new PadesBesSigner(token, settings).sign(content, name, alias, a.reason().orElse(null));
+                case XADES -> new XadesBesSigner(token, settings).sign(content, name, alias);
+                default -> new CadesBesSigner(token, settings).sign(content, name, alias,
                         a.detached() ? CadesPackaging.DETACHED : CadesPackaging.ATTACHED);
             };
             Files.write(target, signed, StandardOpenOption.CREATE_NEW);
-            out.println("İmzalandı (" + format.label() + "-" + timestamping.profile()
+            out.println("İmzalandı (" + format.label() + "-" + settings.profile().label()
                     + (a.detached() ? ", ayrık" : "") + "): " + target);
-            if (!timestamping.enabled()) {
+            if (!settings.timestamping().enabled()) {
                 out.println("Not: zaman damgası yok (BES). T profili için --tsa <url> verin.");
             }
             return 0;
@@ -131,7 +146,64 @@ public final class Main {
         }
     }
 
+    private static int verify(CliArgs a, PrintStream out, PrintStream err) {
+        Path in = a.input().orElseThrow();
+        if (!Files.isRegularFile(in)) {
+            err.println("Hata: dosya bulunamadı: " + in);
+            return 1;
+        }
+        if (a.original().isPresent() && !Files.isRegularFile(a.original().get())) {
+            err.println("Hata: orijinal dosya bulunamadı: " + a.original().get());
+            return 1;
+        }
+        if (a.report().isPresent() && Files.exists(a.report().get())) {
+            err.println("Hata: rapor zaten var, üzerine yazılmaz: " + a.report().get());
+            return 1;
+        }
+        try {
+            TrustSettings trust = trust(a.trust(), System.getenv(TRUST_ENV), a.offline());
+            byte[] original = a.original().isPresent() ? Files.readAllBytes(a.original().get()) : null;
+            VerificationReport r = new SignatureVerifier(trust).verify(Files.readAllBytes(in),
+                    in.getFileName().toString(), original,
+                    a.original().map(p -> p.getFileName().toString()).orElse(null));
+            out.print(VerificationText.render(r, trust.anchors().isEmpty(), ZoneId.systemDefault()));
+            if (a.report().isPresent()) {
+                Files.writeString(a.report().get(), r.detailedReportXml(), StandardOpenOption.CREATE_NEW);
+                out.println("Ayrıntılı rapor / Detailed report: " + a.report().get());
+            }
+            return exitCode(r);
+        } catch (TokenException | IOException e) {
+            err.println("Hata: " + e.getMessage());
+            return 1;
+        }
+    }
+
+    /** 0 geçerli, 3 belirsiz, 4 geçersiz. */
+    static int exitCode(VerificationReport r) {
+        return switch (r.overall()) {
+            case VALID -> 0;
+            case INDETERMINATE -> 3;
+            case INVALID -> 4;
+        };
+    }
+
     static final String TSA_ENV = "ESIGN_TSA_URL";
+    static final String TRUST_ENV = "ESIGN_TRUST_DIR";
+
+    /** --trust önceliklidir; yoksa ESIGN_TRUST_DIR; ikisi de yoksa güven çapası olmadan. */
+    static TrustSettings trust(Optional<Path> cli, String env, boolean offline) throws IOException {
+        Optional<Path> path = cli.or(() -> Optional.ofNullable(env).filter(v -> !v.isBlank()).map(v -> Path.of(v.strip())));
+        List<X509Certificate> anchors = path.isPresent() ? TrustSettings.load(path.get()) : List.of();
+        return TrustSettings.of(anchors, !offline);
+    }
+
+    /** --level verilmezse zaman damgası varsa T, yoksa BES. LT/LTA güven çapası ve iptal kaynağı ister. */
+    static SignatureSettings signatureSettings(CliArgs a, Timestamping ts, String trustEnv) throws IOException {
+        SignatureProfile p = a.level().map(SignatureProfile::parse)
+                .orElse(ts.enabled() ? SignatureProfile.T : SignatureProfile.B);
+        TrustSettings trust = p.needsRevocationData() ? trust(a.trust(), trustEnv, a.offline()) : TrustSettings.none();
+        return new SignatureSettings(p, ts, trust);
+    }
 
     /** --tsa önceliklidir; yoksa ortam değişkeni; ikisi de yoksa zaman damgası kullanılmaz (BES). */
     static Timestamping timestamping(java.util.Optional<String> cli, String env) {

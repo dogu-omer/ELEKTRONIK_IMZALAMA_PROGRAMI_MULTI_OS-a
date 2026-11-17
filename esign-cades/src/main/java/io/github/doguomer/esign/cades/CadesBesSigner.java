@@ -5,10 +5,10 @@ import eu.europa.esig.dss.cades.signature.CAdESService;
 import eu.europa.esig.dss.enumerations.SignatureLevel;
 import eu.europa.esig.dss.enumerations.SignaturePackaging;
 import eu.europa.esig.dss.model.InMemoryDocument;
-import eu.europa.esig.dss.spi.validation.CommonCertificateVerifier;
 import io.github.doguomer.esign.core.SigningToken;
 import io.github.doguomer.esign.core.TokenException;
 import io.github.doguomer.esign.dss.DssTokenSigner;
+import io.github.doguomer.esign.dss.SignatureSettings;
 import io.github.doguomer.esign.dss.Timestamping;
 import java.time.Clock;
 import java.util.Objects;
@@ -27,6 +27,15 @@ public final class CadesBesSigner {
         this(token, Clock.systemUTC(), timestamping);
     }
 
+    /** Profil (BES/T/LT/LTA), zaman damgası ve güven/iptal kaynaklarıyla. */
+    public CadesBesSigner(SigningToken token, SignatureSettings settings) {
+        this.signer = new DssTokenSigner(token, Clock.systemUTC(), settings);
+    }
+
+    CadesBesSigner(SigningToken token, Clock clock, SignatureSettings settings) {
+        this.signer = new DssTokenSigner(token, clock, settings);
+    }
+
     CadesBesSigner(SigningToken token, Clock clock) {
         this(token, clock, Timestamping.none());
     }
@@ -35,9 +44,9 @@ public final class CadesBesSigner {
         this.signer = new DssTokenSigner(token, clock, timestamping);
     }
 
-    /** Üretilecek profil: "BES" veya "T". */
+    /** Üretilecek profil: "BES", "T", "LT" veya "LTA". */
     public String profile() {
-        return signer.timestamping().profile();
+        return signer.settings().profile().label();
     }
 
     /** @return DER kodlu CMS SignedData (CAdES-BES) */
@@ -45,10 +54,10 @@ public final class CadesBesSigner {
             throws TokenException {
         Objects.requireNonNull(content, "content");
         CAdESSignatureParameters params = signer.prepare(new CAdESSignatureParameters(), alias);
-        params.setSignatureLevel(signer.timestamping().level(SignatureLevel.CAdES_BASELINE_B, SignatureLevel.CAdES_BASELINE_T));
+        params.setSignatureLevel(signer.level("CAdES"));
         params.setSignaturePackaging(packaging == CadesPackaging.ATTACHED
                 ? SignaturePackaging.ENVELOPING : SignaturePackaging.DETACHED);
-        return signer.sign(signer.timestamping().apply(new CAdESService(new CommonCertificateVerifier())),
+        return signer.sign(signer.service(CAdESService::new),
                 new InMemoryDocument(content, fileName), params, alias);
     }
 }

@@ -29,20 +29,39 @@ public final class DssTokenSigner {
 
     private final SigningToken token;
     private final Clock clock;
-    private final Timestamping timestamping;
+    private final SignatureSettings settings;
 
     public DssTokenSigner(SigningToken token, Clock clock) {
-        this(token, clock, Timestamping.none());
+        this(token, clock, SignatureSettings.bes());
     }
 
     public DssTokenSigner(SigningToken token, Clock clock, Timestamping timestamping) {
+        this(token, clock, SignatureSettings.of(timestamping));
+    }
+
+    public DssTokenSigner(SigningToken token, Clock clock, SignatureSettings settings) {
         this.token = Objects.requireNonNull(token, "token");
         this.clock = Objects.requireNonNull(clock, "clock");
-        this.timestamping = Objects.requireNonNull(timestamping, "timestamping");
+        this.settings = Objects.requireNonNull(settings, "settings");
+    }
+
+    public SignatureSettings settings() {
+        return settings;
     }
 
     public Timestamping timestamping() {
-        return timestamping;
+        return settings.timestamping();
+    }
+
+    /** @param format "CAdES", "PAdES" veya "XAdES" */
+    public eu.europa.esig.dss.enumerations.SignatureLevel level(String format) {
+        return settings.profile().level(format);
+    }
+
+    /** Doğrulayıcı (güven/iptal kaynakları) ve zaman damgası bağlanmış imza servisi üretir. */
+    public <S extends eu.europa.esig.dss.signature.AbstractSignatureService<?, ?>> S service(
+            java.util.function.Function<eu.europa.esig.dss.spi.validation.CertificateVerifier, S> factory) {
+        return settings.timestamping().apply(factory.apply(settings.trust().certificateVerifier()));
     }
 
     /** İmzacı sertifikası, zincir, özet algoritması ve imza zamanını parametrelere yazar. */
@@ -64,10 +83,15 @@ public final class DssTokenSigner {
         DSSDocument signed;
         try {
             signed = service.signDocument(doc, params, new SignatureValue(algo, raw));
-        } catch (eu.europa.esig.dss.model.DSSException e) {
-            if (timestamping.enabled()) {
+        } catch (RuntimeException e) {
+            SignatureProfile p = settings.profile();
+            if (p.needsRevocationData()) {
+                throw new TokenException(p.label() + " imza üretilemedi (zaman damgası, sertifika zinciri veya "
+                        + "OCSP/CRL verisi alınamadı): " + e.getMessage(), e);
+            }
+            if (p.needsTimestamp()) {
                 throw new TokenException("Zaman damgası alınamadı ("
-                        + timestamping.description().orElse("TSA") + "): " + e.getMessage(), e);
+                        + timestamping().description().orElse("TSA") + "): " + e.getMessage(), e);
             }
             throw e;
         }
