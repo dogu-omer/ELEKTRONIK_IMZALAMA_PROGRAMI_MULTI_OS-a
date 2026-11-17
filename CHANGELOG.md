@@ -1,5 +1,17 @@
 # Değişiklik günlüğü / Changelog
 
+## Yayımlanmadı / Unreleased — API güvenlik sertleştirmesi
+
+- **Kırıcı değişiklik:** REST API artık API anahtarı olmadan başlamaz (fail-closed). `ESIGN_API_KEY` (en az 24
+  karakter) veya `ESIGN_API_KEY_SHA256` verin; yerel geliştirme için `ESIGN_ALLOW_ANONYMOUS=true`.
+- Sunucu yalnızca anahtarın SHA-256 özetini tutar; özetle sabit zamanlı karşılaştırma, çoklu özetle rotasyon.
+- IP başına istek sınırı (`ESIGN_RATE_LIMIT`, 120/dk, `429` + `Retry-After`).
+- Güvenlik başlıkları (`nosniff`, `X-Frame-Options`, `no-store`, CSP), `ESIGN_API_DOCS=false` ile Swagger kapatma.
+- Hata yanıtlarından iç kütüphane mesajları çıkarıldı; beklenmeyen hatalar `ref` kimliğiyle 500, log'da kişisel
+  veri yok. Bozuk JSON artık 400.
+- CLI, API anahtarını şifresiz `http` ile uzak sunucuya göndermez (yalnızca localhost).
+- CI Docker duman testi: anahtarsız 401, anahtarlı erişim, anahtarsız kapsayıcının başlamaması.
+
 ## esign v0.8.0 — Windows ve imzalı sürümler
 
 - Windows MSI (`packaging/windows/build-msi.ps1`, jpackage + WiX 3): gömülü JRE, `esign-gui` Başlat menüsü ve

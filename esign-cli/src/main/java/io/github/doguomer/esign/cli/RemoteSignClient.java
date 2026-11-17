@@ -44,8 +44,20 @@ final class RemoteSignClient {
         }
         this.server = URI.create(server.toString().replaceAll("/+$", "") + "/");
         this.apiKey = apiKey == null || apiKey.isBlank() ? null : apiKey.strip();
+        if (this.apiKey != null && scheme.equals("http") && !isLoopback(server.getHost())) {
+            throw new IllegalArgumentException("API anahtarı şifresiz http ile uzak sunucuya gönderilmez; https kullanın "
+                    + "/ refusing to send the API key over plain http to a remote host");
+        }
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15))
                 .followRedirects(HttpClient.Redirect.NEVER).build();
+    }
+
+    static boolean isLoopback(String host) {
+        if (host == null) {
+            return false;
+        }
+        String h = host.toLowerCase(Locale.ROOT).replaceAll("^\\[|\\]$", "");
+        return h.equals("localhost") || h.equals("::1") || h.startsWith("127.");
     }
 
     URI server() {
