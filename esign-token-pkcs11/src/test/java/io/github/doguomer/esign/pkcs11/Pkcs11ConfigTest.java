@@ -9,9 +9,12 @@ class Pkcs11ConfigTest {
 
     @Test
     void rendersInlineConfig() {
-        String cfg = new Pkcs11Config(Path.of("/usr/lib/libakisp11.so"), 1).toSunPkcs11Config();
+        var c = new Pkcs11Config(Path.of("/usr/lib/libakisp11.so"), 1);
+        String cfg = c.toSunPkcs11Config();
         assertTrue(cfg.startsWith("--name=esign-slot1\n"));
-        assertTrue(cfg.contains("library=\"/usr/lib/libakisp11.so\""));
+        assertTrue(cfg.contains("library=\"" + c.configPath() + "\""));
+        assertTrue(c.configPath().endsWith("/usr/lib/libakisp11.so"));
+        assertFalse(cfg.contains("\\"), "SunPKCS11 tırnak içinde ters bölü kaçış sayar");
         assertTrue(cfg.contains("slotListIndex=1"));
     }
 

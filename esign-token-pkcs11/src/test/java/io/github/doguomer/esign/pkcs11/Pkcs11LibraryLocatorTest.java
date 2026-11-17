@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class Pkcs11LibraryLocatorTest {
@@ -25,9 +24,9 @@ class Pkcs11LibraryLocatorTest {
 
     @Test
     void linuxFallbackFindsFirstExisting() {
-        Set<String> present = Set.of("/usr/local/lib/libakisp11.so");
-        var loc = new Pkcs11LibraryLocator(k -> null, p -> present.contains(p.toString()), "Linux");
-        assertEquals(Path.of("/usr/local/lib/libakisp11.so"), loc.locate().orElseThrow());
+        Path present = Path.of("/usr/local/lib/libakisp11.so");
+        var loc = new Pkcs11LibraryLocator(k -> null, present::equals, "Linux");
+        assertEquals(present, loc.locate().orElseThrow());
     }
 
     @Test
@@ -45,9 +44,9 @@ class Pkcs11LibraryLocatorTest {
     @Test
     void windowsFindsAkisDllInSystem32() {
         var env = Map.of("SystemRoot", "D:\\Win", "ProgramFiles", "C:\\Program Files");
-        String expected = "D:\\Win\\System32\\akisp11.dll";
-        var loc = new Pkcs11LibraryLocator(env::get, p -> p.toString().equals(expected), "Windows 11");
-        assertEquals(expected, loc.locate().orElseThrow().toString());
+        Path expected = Path.of("D:\\Win\\System32\\akisp11.dll");
+        var loc = new Pkcs11LibraryLocator(env::get, expected::equals, "Windows 11");
+        assertEquals(expected, loc.locate().orElseThrow());
         assertTrue(loc.candidates().contains("C:\\Program Files\\AKIS\\akisp11.dll"));
     }
 
@@ -62,6 +61,6 @@ class Pkcs11LibraryLocatorTest {
     void windowsEnvOverrideStillWins() {
         var loc = new Pkcs11LibraryLocator(Map.of(Pkcs11LibraryLocator.ENV_VAR, "E:\\kart\\p11.dll")::get,
                 p -> true, "Windows 11");
-        assertEquals("E:\\kart\\p11.dll", loc.locate().orElseThrow().toString());
+        assertEquals(Path.of("E:\\kart\\p11.dll"), loc.locate().orElseThrow());
     }
 }

@@ -26,10 +26,19 @@ public record Pkcs11Config(Path library, int slotListIndex) {
         }
     }
 
+    /**
+     * SunPKCS11 yapılandırma ayrıştırıcısı tırnak içindeki ters bölüleri kaçış karakteri sayar
+     * ("C:\\Windows\\System32" bozulur). Windows yükleyicisi düz bölüyü de kabul ettiği için çevrilir.
+     * SunPKCS11's parser treats backslashes as escapes; Windows accepts forward slashes.
+     */
+    String configPath() {
+        return library.toAbsolutePath().toString().replace('\\', '/');
+    }
+
     /** SunPKCS11 satır içi yapılandırma metni ("--" önekli). */
     String toSunPkcs11Config() {
         return "--name=esign-slot" + slotListIndex + "\n"
-                + "library=\"" + library.toAbsolutePath() + "\"\n"
+                + "library=\"" + configPath() + "\"\n"
                 + "slotListIndex=" + slotListIndex + "\n";
     }
 }
