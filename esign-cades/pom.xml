@@ -13,7 +13,7 @@
   <dependencies>
     <dependency>
       <groupId>io.github.doguomer.esign</groupId>
-      <artifactId>esign-core</artifactId>
+      <artifactId>esign-dss-support</artifactId>
     </dependency>
     <dependency>
       <groupId>eu.europa.ec.joinup.sd-dss</groupId>
@@ -21,20 +21,7 @@
     </dependency>
     <dependency>
       <groupId>eu.europa.ec.joinup.sd-dss</groupId>
-      <artifactId>dss-utils-apache-commons</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>eu.europa.ec.joinup.sd-dss</groupId>
-      <artifactId>dss-crl-parser-stream</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>eu.europa.ec.joinup.sd-dss</groupId>
       <artifactId>dss-cms-object</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.bouncycastle</groupId>
-      <artifactId>bcpkix-jdk18on</artifactId>
-      <!-- DSS çalışma zamanında BouncyCastle PKIX ister -->
     </dependency>
   </dependencies>
 </project>

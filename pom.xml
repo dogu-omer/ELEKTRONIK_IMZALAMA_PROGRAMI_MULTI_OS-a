@@ -16,7 +16,10 @@
   <modules>
     <module>esign-core</module>
     <module>esign-token-pkcs11</module>
+    <module>esign-dss-support</module>
     <module>esign-cades</module>
+    <module>esign-pades</module>
+    <module>esign-xades</module>
     <module>esign-cli</module>
   </modules>
 
@@ -47,6 +50,11 @@
       </dependency>
       <dependency>
         <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+        <artifactId>dss-document</artifactId>
+        <version>${dss.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>eu.europa.ec.joinup.sd-dss</groupId>
         <artifactId>dss-cades</artifactId>
         <version>${dss.version}</version>
       </dependency>
@@ -63,6 +71,31 @@
       <dependency>
         <groupId>eu.europa.ec.joinup.sd-dss</groupId>
         <artifactId>dss-cms-object</artifactId>
+        <version>${dss.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.doguomer.esign</groupId>
+        <artifactId>esign-dss-support</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.doguomer.esign</groupId>
+        <artifactId>esign-pades</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.doguomer.esign</groupId>
+        <artifactId>esign-xades</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+        <artifactId>dss-pades-pdfbox</artifactId>
+        <version>${dss.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+        <artifactId>dss-xades</artifactId>
         <version>${dss.version}</version>
       </dependency>
       <dependency>

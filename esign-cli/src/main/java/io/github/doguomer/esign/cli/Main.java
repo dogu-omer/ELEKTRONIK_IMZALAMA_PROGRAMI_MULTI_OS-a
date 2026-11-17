@@ -8,6 +8,8 @@ import io.github.doguomer.esign.core.TokenException;
 import io.github.doguomer.esign.pkcs11.Pkcs11Config;
 import io.github.doguomer.esign.pkcs11.Pkcs11LibraryLocator;
 import io.github.doguomer.esign.pkcs11.Pkcs11SigningToken;
+import io.github.doguomer.esign.pades.PadesBesSigner;
+import io.github.doguomer.esign.xades.XadesBesSigner;
 import java.io.Console;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -96,10 +98,16 @@ public final class Main {
                 return 1;
             }
             byte[] content = Files.readAllBytes(in);
-            byte[] signed = new CadesBesSigner(token).sign(content, in.getFileName().toString(), alias,
-                    a.detached() ? CadesPackaging.DETACHED : CadesPackaging.ATTACHED);
+            String name = in.getFileName().toString();
+            SignFormat format = a.effectiveFormat();
+            byte[] signed = switch (format) {
+                case PADES -> new PadesBesSigner(token).sign(content, name, alias, a.reason().orElse(null));
+                case XADES -> new XadesBesSigner(token).sign(content, name, alias);
+                default -> new CadesBesSigner(token).sign(content, name, alias,
+                        a.detached() ? CadesPackaging.DETACHED : CadesPackaging.ATTACHED);
+            };
             Files.write(target, signed, StandardOpenOption.CREATE_NEW);
-            out.println("İmzalandı (CAdES-BES" + (a.detached() ? ", ayrık" : "") + "): " + target);
+            out.println("İmzalandı (" + format.label() + "-BES" + (a.detached() ? ", ayrık" : "") + "): " + target);
             return 0;
         } catch (TokenException | IOException e) {
             err.println("Hata: " + e.getMessage());

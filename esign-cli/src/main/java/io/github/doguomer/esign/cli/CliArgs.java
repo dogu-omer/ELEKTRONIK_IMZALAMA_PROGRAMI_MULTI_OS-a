@@ -16,12 +16,15 @@ record CliArgs(
         Optional<Path> input,
         Optional<Path> output,
         Optional<String> alias,
-        boolean detached) {
+        boolean detached,
+        SignFormat format,
+        Optional<String> reason) {
 
     static final String USAGE = """
             Kullanım / Usage:
               esign list-certs [--lib <pkcs11.so>] [--slot <n>] [--login]
-              esign sign --in <dosya> [--out <dosya>] [--detached] [--alias <etiket>] [--lib <pkcs11.so>] [--slot <n>]
+              esign sign --in <dosya> [--out <dosya>] [--format auto|cades|pades|xades] [--detached]
+                         [--reason <metin>] [--alias <etiket>] [--lib <pkcs11.so>] [--slot <n>]
               esign help
 
             Seçenekler:
@@ -29,8 +32,11 @@ record CliArgs(
               --slot      Slot sırası (varsayılan 0).
               --login     list-certs için PIN sorar (sign her zaman sorar).
               --in        İmzalanacak dosya (Word, Excel, PDF, ZIP, TXT ...).
-              --out       Çıktı. Varsayılan: <dosya>.imz (bütünleşik) veya <dosya>.p7s (--detached).
-              --detached  Ayrık imza; orijinal dosya ayrıca saklanmalıdır.
+              --format    auto (varsayılan): .pdf → PAdES, .xml → XAdES, diğer dosyalar → CAdES.
+              --out       Çıktı. Varsayılan: CAdES <dosya>.imz / <dosya>.p7s, PAdES <ad>_imzali.pdf,
+                          XAdES <ad>_imzali.xml.
+              --detached  Ayrık CAdES imza; orijinal dosya ayrıca saklanmalıdır.
+              --reason    PDF imza nedeni (yalnızca PAdES).
               --alias     Kullanılacak sertifika etiketi. Verilmezse imzaya uygun tek sertifika seçilir.
             PIN asla argüman olarak verilmez.
             """;
@@ -38,7 +44,7 @@ record CliArgs(
     static CliArgs parse(List<String> argv) {
         if (argv.isEmpty()) {
             return new CliArgs("help", Optional.empty(), 0, false, Optional.empty(), Optional.empty(),
-                    Optional.empty(), false);
+                    Optional.empty(), false, SignFormat.AUTO, Optional.empty());
         }
         String cmd = argv.get(0);
         Optional<Path> lib = Optional.empty();
@@ -48,6 +54,8 @@ record CliArgs(
         int slot = 0;
         boolean login = false;
         boolean detached = false;
+        SignFormat format = SignFormat.AUTO;
+        Optional<String> reason = Optional.empty();
         for (int i = 1; i < argv.size(); i++) {
             String a = argv.get(i);
             switch (a) {
@@ -58,6 +66,8 @@ record CliArgs(
                 case "--out" -> out = Optional.of(Path.of(value(argv, ++i, a)));
                 case "--alias" -> alias = Optional.of(value(argv, ++i, a));
                 case "--detached" -> detached = true;
+                case "--format" -> format = SignFormat.parse(value(argv, ++i, a));
+                case "--reason" -> reason = Optional.of(value(argv, ++i, a));
                 case "--pin" -> throw new IllegalArgumentException(
                         "--pin desteklenmez: PIN süreç listesinde görünür. Terminalden sorulur.");
                 default -> throw new IllegalArgumentException("Bilinmeyen seçenek: " + a);
@@ -66,13 +76,31 @@ record CliArgs(
         if (cmd.equals("sign") && in.isEmpty()) {
             throw new IllegalArgumentException("sign için --in gerekli");
         }
-        return new CliArgs(cmd, lib, slot, login, in, out, alias, detached);
+        if (detached && in.isPresent() && format.resolve(in.get()) != SignFormat.CADES) {
+            throw new IllegalArgumentException("--detached yalnızca CAdES için geçerlidir (--format cades)");
+        }
+        return new CliArgs(cmd, lib, slot, login, in, out, alias, detached, format, reason);
+    }
+
+    /** Dosyaya uygulanacak gerçek biçim. */
+    SignFormat effectiveFormat() {
+        return format.resolve(input.orElseThrow());
     }
 
     /** Varsayılan çıktı yolu. */
     Path outputPath() {
         Path src = input.orElseThrow();
-        return output.orElseGet(() -> src.resolveSibling(src.getFileName() + (detached ? ".p7s" : ".imz")));
+        String name = src.getFileName().toString();
+        return output.orElseGet(() -> switch (effectiveFormat()) {
+            case PADES -> src.resolveSibling(stem(name) + "_imzali.pdf");
+            case XADES -> src.resolveSibling(stem(name) + "_imzali.xml");
+            default -> src.resolveSibling(name + (detached ? ".p7s" : ".imz"));
+        });
+    }
+
+    private static String stem(String name) {
+        int dot = name.lastIndexOf('.');
+        return dot > 0 ? name.substring(0, dot) : name;
     }
 
     private static String value(List<String> argv, int i, String opt) {

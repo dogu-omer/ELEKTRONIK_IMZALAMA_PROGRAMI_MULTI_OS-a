@@ -51,4 +51,30 @@ class CliArgsTest {
     void signRequiresInput() {
         assertThrows(IllegalArgumentException.class, () -> CliArgs.parse(List.of("sign")));
     }
+
+    @Test
+    void pdfDefaultsToPades() {
+        var a = CliArgs.parse(List.of("sign", "--in", "/tmp/Sozlesme.PDF"));
+        assertEquals(SignFormat.PADES, a.effectiveFormat());
+        assertEquals(Path.of("/tmp/Sozlesme_imzali.pdf"), a.outputPath());
+    }
+
+    @Test
+    void xmlDefaultsToXades() {
+        var a = CliArgs.parse(List.of("sign", "--in", "/tmp/yazi.xml"));
+        assertEquals(SignFormat.XADES, a.effectiveFormat());
+        assertEquals(Path.of("/tmp/yazi_imzali.xml"), a.outputPath());
+    }
+
+    @Test
+    void pdfCanBeForcedToCades() {
+        var a = CliArgs.parse(List.of("sign", "--in", "/tmp/a.pdf", "--format", "cades"));
+        assertEquals(Path.of("/tmp/a.pdf.imz"), a.outputPath());
+    }
+
+    @Test
+    void detachedOnlyForCades() {
+        assertThrows(IllegalArgumentException.class, () -> CliArgs.parse(List.of("sign", "--in", "/tmp/a.pdf", "--detached")));
+        assertThrows(IllegalArgumentException.class, () -> CliArgs.parse(List.of("sign", "--in", "/tmp/a", "--format", "zip")));
+    }
 }
