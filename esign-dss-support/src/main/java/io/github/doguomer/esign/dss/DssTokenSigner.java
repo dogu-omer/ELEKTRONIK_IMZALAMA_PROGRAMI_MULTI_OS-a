@@ -29,10 +29,20 @@ public final class DssTokenSigner {
 
     private final SigningToken token;
     private final Clock clock;
+    private final Timestamping timestamping;
 
     public DssTokenSigner(SigningToken token, Clock clock) {
+        this(token, clock, Timestamping.none());
+    }
+
+    public DssTokenSigner(SigningToken token, Clock clock, Timestamping timestamping) {
         this.token = Objects.requireNonNull(token, "token");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.timestamping = Objects.requireNonNull(timestamping, "timestamping");
+    }
+
+    public Timestamping timestamping() {
+        return timestamping;
     }
 
     /** İmzacı sertifikası, zincir, özet algoritması ve imza zamanını parametrelere yazar. */
@@ -51,7 +61,16 @@ public final class DssTokenSigner {
         ToBeSigned tbs = service.getDataToSign(doc, params);
         SignatureAlgorithm algo = algorithmFor(params.getSigningCertificate());
         byte[] raw = token.sign(alias, tbs.getBytes(), algo.getJCEId());
-        DSSDocument signed = service.signDocument(doc, params, new SignatureValue(algo, raw));
+        DSSDocument signed;
+        try {
+            signed = service.signDocument(doc, params, new SignatureValue(algo, raw));
+        } catch (eu.europa.esig.dss.model.DSSException e) {
+            if (timestamping.enabled()) {
+                throw new TokenException("Zaman damgası alınamadı ("
+                        + timestamping.description().orElse("TSA") + "): " + e.getMessage(), e);
+            }
+            throw e;
+        }
         try (var out = new ByteArrayOutputStream()) {
             signed.writeTo(out);
             return out.toByteArray();

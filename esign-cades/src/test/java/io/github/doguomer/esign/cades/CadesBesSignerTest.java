@@ -14,6 +14,8 @@ import org.bouncycastle.cms.CMSSignedData;
 import org.bouncycastle.cms.SignerInformation;
 import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder;
 import org.junit.jupiter.api.BeforeEach;
+import io.github.doguomer.esign.dss.Timestamping;
+import io.github.doguomer.esign.dss.testing.TestTsa;
 import org.junit.jupiter.api.Test;
 
 class CadesBesSignerTest {
@@ -78,5 +80,35 @@ class CadesBesSignerTest {
     void unknownAliasFails() {
         assertThrows(TokenException.class,
                 () -> signer.sign(CONTENT, "b.txt", "yok", CadesPackaging.ATTACHED));
+    }
+
+    @Test
+    void withTsaProducesCadesTWithSignatureTimestamp() throws Exception {
+        TestTsa tsa = new TestTsa();
+        var tSigner = new CadesBesSigner(token, Clock.systemUTC(), Timestamping.of(tsa, "test"));
+        assertEquals("T", tSigner.profile());
+        byte[] imz = tSigner.sign(CONTENT, "belge.txt", InMemorySigningToken.ALIAS, CadesPackaging.ATTACHED);
+
+        SignerInformation si = new CMSSignedData(imz).getSignerInfos().getSigners().iterator().next();
+        assertTrue(si.verify(new JcaSimpleSignerInfoVerifierBuilder().build(token.cert)));
+        var tst = si.getUnsignedAttributes().get(PKCSObjectIdentifiers.id_aa_signatureTimeStampToken);
+        assertNotNull(tst, "CAdES-T: signature-time-stamp özniteliği gerekli");
+        var token = new org.bouncycastle.tsp.TimeStampToken(new CMSSignedData(
+                tst.getAttrValues().getObjectAt(0).toASN1Primitive().getEncoded()));
+        assertTrue(token.isSignatureValid(new JcaSimpleSignerInfoVerifierBuilder().build(tsa.cert)));
+        String alg = eu.europa.esig.dss.enumerations.DigestAlgorithm
+                .forOID(token.getTimeStampInfo().getMessageImprintAlgOID().getId()).getJavaName();
+        assertArrayEquals(java.security.MessageDigest.getInstance(alg).digest(si.getSignature()),
+                token.getTimeStampInfo().getMessageImprintDigest(), "Damga imza değerini kapsamalı");
+        assertEquals(1, tsa.calls);
+    }
+
+    @Test
+    void withoutTsaStaysBes() throws Exception {
+        assertEquals("BES", signer.profile());
+        byte[] imz = signer.sign(CONTENT, "belge.txt", InMemorySigningToken.ALIAS, CadesPackaging.ATTACHED);
+        SignerInformation si = new CMSSignedData(imz).getSignerInfos().getSigners().iterator().next();
+        assertTrue(si.getUnsignedAttributes() == null
+                || si.getUnsignedAttributes().get(PKCSObjectIdentifiers.id_aa_signatureTimeStampToken) == null);
     }
 }

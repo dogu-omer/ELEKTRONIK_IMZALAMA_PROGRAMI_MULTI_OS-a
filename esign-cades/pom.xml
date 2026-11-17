@@ -6,7 +6,7 @@
   <parent>
     <groupId>io.github.doguomer.esign</groupId>
     <artifactId>esign-parent</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.2.0</version>
   </parent>
   <artifactId>esign-cades</artifactId>
   <description>CAdES imza üretimi (EU DSS, LGPL-2.1)</description>
@@ -22,6 +22,12 @@
     <dependency>
       <groupId>eu.europa.ec.joinup.sd-dss</groupId>
       <artifactId>dss-cms-object</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.doguomer.esign</groupId>
+      <artifactId>esign-dss-support</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>

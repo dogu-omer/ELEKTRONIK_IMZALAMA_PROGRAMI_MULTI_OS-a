@@ -18,13 +18,15 @@ record CliArgs(
         Optional<String> alias,
         boolean detached,
         SignFormat format,
-        Optional<String> reason) {
+        Optional<String> reason,
+        Optional<String> tsa) {
 
     static final String USAGE = """
             Kullanım / Usage:
               esign list-certs [--lib <pkcs11.so>] [--slot <n>] [--login]
               esign sign --in <dosya> [--out <dosya>] [--format auto|cades|pades|xades] [--detached]
-                         [--reason <metin>] [--alias <etiket>] [--lib <pkcs11.so>] [--slot <n>]
+                         [--reason <metin>] [--alias <etiket>] [--tsa <url>] [--lib <pkcs11.so>] [--slot <n>]
+              esign version
               esign help
 
             Seçenekler:
@@ -38,13 +40,15 @@ record CliArgs(
               --detached  Ayrık CAdES imza; orijinal dosya ayrıca saklanmalıdır.
               --reason    PDF imza nedeni (yalnızca PAdES).
               --alias     Kullanılacak sertifika etiketi. Verilmezse imzaya uygun tek sertifika seçilir.
+              --tsa       RFC 3161 zaman damgası sunucusu (ESHS). Verilirse imza T profilinde (BES + zaman
+                          damgası) üretilir; verilmezse ESIGN_TSA_URL denenir, o da yoksa BES üretilir.
             PIN asla argüman olarak verilmez.
             """;
 
     static CliArgs parse(List<String> argv) {
         if (argv.isEmpty()) {
             return new CliArgs("help", Optional.empty(), 0, false, Optional.empty(), Optional.empty(),
-                    Optional.empty(), false, SignFormat.AUTO, Optional.empty());
+                    Optional.empty(), false, SignFormat.AUTO, Optional.empty(), Optional.empty());
         }
         String cmd = argv.get(0);
         Optional<Path> lib = Optional.empty();
@@ -56,6 +60,7 @@ record CliArgs(
         boolean detached = false;
         SignFormat format = SignFormat.AUTO;
         Optional<String> reason = Optional.empty();
+        Optional<String> tsa = Optional.empty();
         for (int i = 1; i < argv.size(); i++) {
             String a = argv.get(i);
             switch (a) {
@@ -68,6 +73,7 @@ record CliArgs(
                 case "--detached" -> detached = true;
                 case "--format" -> format = SignFormat.parse(value(argv, ++i, a));
                 case "--reason" -> reason = Optional.of(value(argv, ++i, a));
+                case "--tsa" -> tsa = Optional.of(value(argv, ++i, a));
                 case "--pin" -> throw new IllegalArgumentException(
                         "--pin desteklenmez: PIN süreç listesinde görünür. Terminalden sorulur.");
                 default -> throw new IllegalArgumentException("Bilinmeyen seçenek: " + a);
@@ -79,7 +85,7 @@ record CliArgs(
         if (detached && in.isPresent() && format.resolve(in.get()) != SignFormat.CADES) {
             throw new IllegalArgumentException("--detached yalnızca CAdES için geçerlidir (--format cades)");
         }
-        return new CliArgs(cmd, lib, slot, login, in, out, alias, detached, format, reason);
+        return new CliArgs(cmd, lib, slot, login, in, out, alias, detached, format, reason, tsa);
     }
 
     /** Dosyaya uygulanacak gerçek biçim. */

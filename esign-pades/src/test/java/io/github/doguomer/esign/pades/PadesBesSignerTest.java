@@ -17,6 +17,9 @@ import org.bouncycastle.cms.CMSSignedData;
 import org.bouncycastle.cms.SignerInformation;
 import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder;
 import org.junit.jupiter.api.BeforeEach;
+import io.github.doguomer.esign.dss.Timestamping;
+import io.github.doguomer.esign.dss.testing.TestTsa;
+import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.junit.jupiter.api.Test;
 
 class PadesBesSignerTest {
@@ -78,5 +81,22 @@ class PadesBesSignerTest {
     void nonPdfIsRejected() {
         assertThrows(TokenException.class, () -> signer.sign("merhaba".getBytes(StandardCharsets.UTF_8),
                 "a.pdf", InMemorySigningToken.ALIAS, null));
+    }
+
+    @Test
+    void withTsaProducesPadesTWithSignatureTimestamp() throws Exception {
+        TestTsa tsa = new TestTsa();
+        var tSigner = new PadesBesSigner(token, java.time.Clock.systemUTC(), Timestamping.of(tsa, "test"));
+        byte[] signed = tSigner.sign(blankPdf(), "belge.pdf", InMemorySigningToken.ALIAS, null);
+
+        try (PDDocument doc = Loader.loadPDF(signed)) {
+            PDSignature sig = doc.getSignatureDictionaries().get(0);
+            assertTrue(verify(signed, sig));
+            CMSSignedData cms = new CMSSignedData(sig.getContents(signed));
+            SignerInformation si = cms.getSignerInfos().getSigners().iterator().next();
+            assertNotNull(si.getUnsignedAttributes().get(PKCSObjectIdentifiers.id_aa_signatureTimeStampToken),
+                    "PAdES-T: imza zaman damgası gerekli");
+        }
+        assertTrue(tsa.calls >= 1);
     }
 }

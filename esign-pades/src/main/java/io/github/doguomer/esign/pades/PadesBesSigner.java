@@ -8,6 +8,7 @@ import eu.europa.esig.dss.spi.validation.CommonCertificateVerifier;
 import io.github.doguomer.esign.core.SigningToken;
 import io.github.doguomer.esign.core.TokenException;
 import io.github.doguomer.esign.dss.DssTokenSigner;
+import io.github.doguomer.esign.dss.Timestamping;
 import java.time.Clock;
 import java.util.Objects;
 
@@ -21,11 +22,25 @@ public final class PadesBesSigner {
     private final DssTokenSigner signer;
 
     public PadesBesSigner(SigningToken token) {
-        this(token, Clock.systemUTC());
+        this(token, Timestamping.none());
+    }
+
+    /** @param timestamping {@link Timestamping#none()} → BES, TSA verilirse → T profili */
+    public PadesBesSigner(SigningToken token, Timestamping timestamping) {
+        this(token, Clock.systemUTC(), timestamping);
     }
 
     PadesBesSigner(SigningToken token, Clock clock) {
-        this.signer = new DssTokenSigner(token, clock);
+        this(token, clock, Timestamping.none());
+    }
+
+    PadesBesSigner(SigningToken token, Clock clock, Timestamping timestamping) {
+        this.signer = new DssTokenSigner(token, clock, timestamping);
+    }
+
+    /** Üretilecek profil: "BES" veya "T". */
+    public String profile() {
+        return signer.timestamping().profile();
     }
 
     /**
@@ -38,11 +53,11 @@ public final class PadesBesSigner {
             throw new TokenException("Dosya bir PDF değil: " + fileName);
         }
         PAdESSignatureParameters params = signer.prepare(new PAdESSignatureParameters(), alias);
-        params.setSignatureLevel(SignatureLevel.PAdES_BASELINE_B);
+        params.setSignatureLevel(signer.timestamping().level(SignatureLevel.PAdES_BASELINE_B, SignatureLevel.PAdES_BASELINE_T));
         if (reason != null && !reason.isBlank()) {
             params.setReason(reason);
         }
-        return signer.sign(new PAdESService(new CommonCertificateVerifier()),
+        return signer.sign(signer.timestamping().apply(new PAdESService(new CommonCertificateVerifier())),
                 new InMemoryDocument(pdf, fileName), params, alias);
     }
 }

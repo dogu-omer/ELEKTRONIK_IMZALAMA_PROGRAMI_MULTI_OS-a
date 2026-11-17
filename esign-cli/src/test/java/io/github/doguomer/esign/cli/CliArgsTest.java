@@ -77,4 +77,26 @@ class CliArgsTest {
         assertThrows(IllegalArgumentException.class, () -> CliArgs.parse(List.of("sign", "--in", "/tmp/a.pdf", "--detached")));
         assertThrows(IllegalArgumentException.class, () -> CliArgs.parse(List.of("sign", "--in", "/tmp/a", "--format", "zip")));
     }
+
+    @Test
+    void tsaOptionSelectsTProfile() {
+        var a = CliArgs.parse(List.of("sign", "--in", "a.pdf", "--tsa", "https://tsa.example.org/tsr"));
+        assertEquals("https://tsa.example.org/tsr", a.tsa().orElseThrow());
+        assertEquals("T", Main.timestamping(a.tsa(), null).profile());
+    }
+
+    @Test
+    void noTsaMeansBesAndEnvIsFallback() {
+        assertEquals("BES", Main.timestamping(java.util.Optional.empty(), null).profile());
+        assertEquals("BES", Main.timestamping(java.util.Optional.empty(), "  ").profile());
+        assertEquals("T", Main.timestamping(java.util.Optional.empty(), "http://tsa.example.org").profile());
+    }
+
+    @Test
+    void invalidTsaIsUsageError() {
+        assertThrows(IllegalArgumentException.class,
+                () -> Main.timestamping(java.util.Optional.of("tsa.example.org"), null));
+        assertThrows(IllegalArgumentException.class,
+                () -> Main.timestamping(java.util.Optional.of("https://u:p@tsa.example.org"), null));
+    }
 }

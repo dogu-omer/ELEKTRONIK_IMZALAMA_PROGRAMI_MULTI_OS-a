@@ -5,6 +5,7 @@ import io.github.doguomer.esign.cades.CadesPackaging;
 import io.github.doguomer.esign.core.CertificateInfo;
 import io.github.doguomer.esign.core.SigningToken;
 import io.github.doguomer.esign.core.TokenException;
+import io.github.doguomer.esign.dss.Timestamping;
 import io.github.doguomer.esign.pkcs11.Pkcs11Config;
 import io.github.doguomer.esign.pkcs11.Pkcs11LibraryLocator;
 import io.github.doguomer.esign.pkcs11.Pkcs11SigningToken;
@@ -40,6 +41,10 @@ public final class Main {
         return switch (a.command()) {
             case "help", "--help", "-h" -> {
                 out.print(CliArgs.USAGE);
+                yield 0;
+            }
+            case "version", "--version" -> {
+                out.println("esign " + version());
                 yield 0;
             }
             case "list-certs" -> listCerts(a, out, err);
@@ -84,6 +89,13 @@ public final class Main {
             err.println("Hata: çıktı zaten var, üzerine yazılmaz: " + target);
             return 1;
         }
+        Timestamping timestamping;
+        try {
+            timestamping = timestamping(a.tsa(), System.getenv(TSA_ENV));
+        } catch (IllegalArgumentException e) {
+            err.println("Hata: " + e.getMessage());
+            return 2;
+        }
         Path lib = resolveLibrary(a, err);
         if (lib == null) {
             return 1;
@@ -101,18 +113,44 @@ public final class Main {
             String name = in.getFileName().toString();
             SignFormat format = a.effectiveFormat();
             byte[] signed = switch (format) {
-                case PADES -> new PadesBesSigner(token).sign(content, name, alias, a.reason().orElse(null));
-                case XADES -> new XadesBesSigner(token).sign(content, name, alias);
-                default -> new CadesBesSigner(token).sign(content, name, alias,
+                case PADES -> new PadesBesSigner(token, timestamping).sign(content, name, alias, a.reason().orElse(null));
+                case XADES -> new XadesBesSigner(token, timestamping).sign(content, name, alias);
+                default -> new CadesBesSigner(token, timestamping).sign(content, name, alias,
                         a.detached() ? CadesPackaging.DETACHED : CadesPackaging.ATTACHED);
             };
             Files.write(target, signed, StandardOpenOption.CREATE_NEW);
-            out.println("İmzalandı (" + format.label() + "-BES" + (a.detached() ? ", ayrık" : "") + "): " + target);
+            out.println("İmzalandı (" + format.label() + "-" + timestamping.profile()
+                    + (a.detached() ? ", ayrık" : "") + "): " + target);
+            if (!timestamping.enabled()) {
+                out.println("Not: zaman damgası yok (BES). T profili için --tsa <url> verin.");
+            }
             return 0;
         } catch (TokenException | IOException e) {
             err.println("Hata: " + e.getMessage());
             return 1;
         }
+    }
+
+    static final String TSA_ENV = "ESIGN_TSA_URL";
+
+    /** --tsa önceliklidir; yoksa ortam değişkeni; ikisi de yoksa zaman damgası kullanılmaz (BES). */
+    static Timestamping timestamping(java.util.Optional<String> cli, String env) {
+        return cli.or(() -> java.util.Optional.ofNullable(env).filter(v -> !v.isBlank()))
+                .map(String::strip)
+                .map(u -> {
+                    try {
+                        return Timestamping.online(java.net.URI.create(u));
+                    } catch (IllegalArgumentException e) {
+                        throw new IllegalArgumentException(e.getMessage().startsWith("Zaman")
+                                ? e.getMessage() : "Geçersiz zaman damgası adresi: " + u);
+                    }
+                })
+                .orElse(Timestamping.none());
+    }
+
+    static String version() {
+        String v = Main.class.getPackage().getImplementationVersion();
+        return v == null ? "dev" : v;
     }
 
     /** --alias verilmemişse imzaya uygun tek sertifikayı seçer; birden fazlaysa kullanıcıdan seçim ister. */

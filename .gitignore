@@ -12,3 +12,4 @@ target/
 *.p12
 *.pfx
 softhsm2.conf
+dist/

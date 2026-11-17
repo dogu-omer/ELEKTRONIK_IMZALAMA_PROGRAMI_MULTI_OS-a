@@ -5,12 +5,12 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.doguomer.esign</groupId>
   <artifactId>esign-parent</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.2.0</version>
   <packaging>pom</packaging>
   <name>ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS</name>
   <description>Linux/macOS e-imza platformu (CAdES/PAdES/XAdES, PKCS#11)</description>
   <licenses>
-    <license><name>Apache-2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0</url></license>
+    <license><name>GPL-3.0-or-later</name><url>https://www.gnu.org/licenses/gpl-3.0.html</url></license>
   </licenses>
 
   <modules>
@@ -80,6 +80,18 @@
       </dependency>
       <dependency>
         <groupId>io.github.doguomer.esign</groupId>
+        <artifactId>esign-dss-support</artifactId>
+        <version>${project.version}</version>
+        <type>test-jar</type>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+        <artifactId>dss-service</artifactId>
+        <version>${dss.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.doguomer.esign</groupId>
         <artifactId>esign-pades</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -137,6 +149,11 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
           <version>3.6.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>3.4.2</version>
         </plugin>
       </plugins>
     </pluginManagement>

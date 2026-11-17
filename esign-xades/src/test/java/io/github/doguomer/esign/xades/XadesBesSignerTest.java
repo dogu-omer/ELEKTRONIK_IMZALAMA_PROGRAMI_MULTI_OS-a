@@ -13,6 +13,8 @@ import javax.xml.crypto.dsig.XMLSignatureFactory;
 import javax.xml.crypto.dsig.dom.DOMValidateContext;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.BeforeEach;
+import io.github.doguomer.esign.dss.Timestamping;
+import io.github.doguomer.esign.dss.testing.TestTsa;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -68,5 +70,16 @@ class XadesBesSignerTest {
     void invalidXmlIsRejected() {
         assertThrows(TokenException.class,
                 () -> signer.sign("bu xml değil".getBytes(StandardCharsets.UTF_8), "x.xml", InMemorySigningToken.ALIAS));
+    }
+
+    @Test
+    void withTsaProducesXadesTWithSignatureTimestamp() throws Exception {
+        TestTsa tsa = new TestTsa();
+        var tSigner = new XadesBesSigner(token, Clock.systemUTC(), Timestamping.of(tsa, "test"));
+        Document doc = parse(tSigner.sign(XML.getBytes(StandardCharsets.UTF_8), "yazi.xml", InMemorySigningToken.ALIAS));
+
+        assertEquals(1, doc.getElementsByTagNameNS("http://uri.etsi.org/01903/v1.3.2#", "SignatureTimeStamp").getLength());
+        assertTrue(validate(doc));
+        assertEquals(1, tsa.calls);
     }
 }
