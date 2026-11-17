@@ -1,0 +1,24 @@
+name: ci
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: SoftHSM test token
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq softhsm2 opensc
+          scripts/softhsm-setup.sh > "$RUNNER_TEMP/softhsm.env"
+          sed 's/^export //; s/'"'"'//g' "$RUNNER_TEMP/softhsm.env" >> "$GITHUB_ENV"
+      - name: Build and test
+        run: mvn -B -ntp verify

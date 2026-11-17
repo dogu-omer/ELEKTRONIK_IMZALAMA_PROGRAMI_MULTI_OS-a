@@ -1,0 +1,35 @@
+package io.github.doguomer.esign.pkcs11;
+
+import java.nio.file.Path;
+import java.util.Objects;
+import java.util.regex.Pattern;
+
+/**
+ * SunPKCS11 yapılandırması.
+ *
+ * @param library       PKCS#11 kütüphanesi (ör. AKİS için libakisp11.so)
+ * @param slotListIndex okuyucu/slot sırası (0 = ilk kartlı slot)
+ */
+public record Pkcs11Config(Path library, int slotListIndex) {
+
+    private static final Pattern SAFE_PATH = Pattern.compile("[^\\r\\n\"]+");
+
+    public Pkcs11Config {
+        Objects.requireNonNull(library, "library");
+        if (slotListIndex < 0) {
+            throw new IllegalArgumentException("slotListIndex negatif olamaz");
+        }
+        String p = library.toAbsolutePath().toString();
+        if (!SAFE_PATH.matcher(p).matches()) {
+            // Yapılandırma enjeksiyonunu önler (satır sonu / tırnak).
+            throw new IllegalArgumentException("Geçersiz kütüphane yolu");
+        }
+    }
+
+    /** SunPKCS11 satır içi yapılandırma metni ("--" önekli). */
+    String toSunPkcs11Config() {
+        return "--name=esign-slot" + slotListIndex + "\n"
+                + "library=\"" + library.toAbsolutePath() + "\"\n"
+                + "slotListIndex=" + slotListIndex + "\n";
+    }
+}
