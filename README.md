@@ -12,7 +12,7 @@ damgası** ile BES veya T profilinde imza atar. İmza motoru olarak Avrupa Komis
 with a PKCS#11 smart card or USB token (e.g. Turkish AKİS cards), with optional **RFC 3161
 timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 319 102-1, OCSP/CRL). Built on the European Commission's [EU DSS](https://github.com/esig/dss).
 
-> ⚠️ **Durum / Status: v0.3.1 — Faz 5 / 7.** İmza üretimi, doğrulama, OCSP/CRL ve LT/LTA hazırdır;
+> ⚠️ **Durum / Status: v0.4.0 — Faz 6 / 7 sürüyor.** İmza üretimi, doğrulama, OCSP/CRL, LT/LTA ve görünür PDF imzası hazırdır;
 > **İmzager karşılıklı testleri ve gerçek ESHS/Kamu SM ortamında uçtan uca test henüz yapılmadı.** Bu yazılım
 > BTK veya TÜBİTAK tarafından onaylanmış değildir. / Signing, validation, revocation checks and LT/LTA
 > work; İmzager interoperability and end-to-end tests against real Turkish CAs/TSAs are not done yet.
@@ -43,6 +43,7 @@ timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 
 | Karttaki sertifikaları listeleme / List card certificates | ✅ | PKCS#11 v2.x |
 | CAdES-BES bütünleşik `.imz` (İmzager biçimi) ve ayrık `.p7s` | ✅ | ETSI EN 319 122, RFC 5652 |
 | PAdES-BES (PDF içine, çoklu imza) / multiple signers | ✅ | ETSI EN 319 142 |
+| Görünür PDF imzası (`--visible`) / visible PDF signature | ✅ | ISO 32000 |
 | XAdES-BES enveloped (XML içine) | ✅ | ETSI EN 319 132 |
 | Zaman damgalı T profili / T profile with timestamp | ✅ isteğe bağlı / optional | RFC 3161 |
 | Gömülü JRE ile `.deb` ve macOS `.pkg` | ✅ | — |
@@ -152,6 +153,10 @@ esign sign --in sozlesme.pdf --format cades
 # Zaman damgalı (T profili) / with timestamp (T profile)
 esign sign --in sozlesme.pdf --tsa http://zd.ornek-eshs.com.tr
 
+# Görünür imza kutusu (son sayfa sağ alt, ya da sayfa/konum seçilir) / visible signature box
+esign sign --in sozlesme.pdf --visible --reason "Onaylıyorum"
+esign sign --in sozlesme.pdf --visible-at 2,50,700
+
 # Uzun dönem (LT: OCSP/CRL gömülü, LTA: + arşiv zaman damgası) / long-term profiles
 esign sign --in sozlesme.pdf --tsa http://zd.ornek-eshs.com.tr --level lta --trust ~/kamusm-kokler/
 
@@ -259,7 +264,7 @@ validate signatures or check revocation, and must not be the sole basis for a le
 
 ```bash
 sudo apt install openjdk-21-jdk maven            # macOS: brew install openjdk@21 maven
-mvn -B verify                                     # 71 test
+mvn -B verify                                     # 78 test
 java -jar esign-cli/target/esign.jar help
 
 # Kartsız gerçek PKCS#11 testi (SoftHSM2) / real PKCS#11 tests without a card
@@ -310,7 +315,7 @@ imzalayıcı değişir. Akademik açıklama: [docs/makale-taslagi.md](docs/makal
 3. ✅ PAdES-BES ve XAdES-BES
 4. ✅ RFC 3161 zaman damgası (isteğe bağlı, T profili), `.deb` / macOS paketleri
 5. ✅ İmza doğrulama (`esign verify`), OCSP/CRL, zincir, LT/LTA
-6. ⏳ İmzager karşılıklı uyumluluk testleri, görünür PDF imzası, ESHS kimlik doğrulamalı zaman damgası, masaüstü arayüz
+6. ⏳ İmzager karşılıklı uyumluluk testleri, ✅ görünür PDF imzası (v0.4.0), ESHS kimlik doğrulamalı zaman damgası, masaüstü arayüz
 7. ⏳ REST API (Spring Boot), Docker
 
 ## 11. Lisans / License

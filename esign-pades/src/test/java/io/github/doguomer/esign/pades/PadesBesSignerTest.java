@@ -106,4 +106,51 @@ class PadesBesSignerTest {
         }
         assertTrue(tsa.calls >= 1);
     }
+
+    private static byte[] pdfWithPages(int n) throws Exception {
+        try (PDDocument doc = new PDDocument(); var out = new ByteArrayOutputStream()) {
+            for (int i = 0; i < n; i++) {
+                doc.addPage(new PDPage());
+            }
+            doc.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void visibleSignatureDrawsBoxOnLastPageAndStaysValid() throws Exception {
+        byte[] signed = signer.sign(pdfWithPages(3), "belge.pdf", InMemorySigningToken.ALIAS, "Onaylıyorum",
+                java.util.Optional.of(VisibleSignature.defaults()));
+        try (PDDocument doc = Loader.loadPDF(signed)) {
+            PDSignature sig = doc.getSignatureDictionaries().get(0);
+            assertTrue(verify(signed, sig));
+            var field = doc.getSignatureFields().get(0);
+            var widget = field.getWidgets().get(0);
+            assertEquals(doc.getPage(2), widget.getPage(), "son sayfada olmalı");
+            var r = widget.getRectangle();
+            assertEquals(VisibleSignature.WIDTH, r.getWidth(), 1f);
+            assertEquals(VisibleSignature.HEIGHT, r.getHeight(), 1f);
+            assertTrue(r.getLowerLeftX() > doc.getPage(2).getMediaBox().getWidth() / 2, "sağ tarafta olmalı");
+            assertTrue(r.getLowerLeftY() < 100, "altta olmalı");
+            assertNotNull(widget.getNormalAppearanceStream(), "görünüm akışı gerekli");
+        }
+    }
+
+    @Test
+    void visibleSignatureOnChosenPageAndPosition() throws Exception {
+        byte[] signed = signer.sign(pdfWithPages(2), "belge.pdf", InMemorySigningToken.ALIAS, null,
+                java.util.Optional.of(VisibleSignature.parse("1,50,60")));
+        try (PDDocument doc = Loader.loadPDF(signed)) {
+            var widget = doc.getSignatureFields().get(0).getWidgets().get(0);
+            assertEquals(doc.getPage(0), widget.getPage());
+            assertEquals(50f, widget.getRectangle().getLowerLeftX(), 1f);
+        }
+    }
+
+    @Test
+    void visiblePageOutOfRangeIsRejected() {
+        var e = assertThrows(TokenException.class, () -> signer.sign(pdfWithPages(1), "belge.pdf",
+                InMemorySigningToken.ALIAS, null, java.util.Optional.of(VisibleSignature.parse("5"))));
+        assertTrue(e.getMessage().contains("1 sayfa"));
+    }
 }

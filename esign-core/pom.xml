@@ -6,7 +6,7 @@
   <parent>
     <groupId>io.github.doguomer.esign</groupId>
     <artifactId>esign-parent</artifactId>
-    <version>0.3.1</version>
+    <version>0.4.0</version>
   </parent>
   <artifactId>esign-core</artifactId>
   <description>Port arayüzleri ve alan modeli (bağımlılıksız)</description>

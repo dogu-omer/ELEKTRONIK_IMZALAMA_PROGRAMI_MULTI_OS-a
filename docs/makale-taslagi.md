@@ -18,7 +18,7 @@ biçimlerinden ayırır; isteğe bağlı RFC 3161 zaman damgası ile ETSI baseli
 destekler; uzun dönem LT/LTA profillerini ve ETSI EN 319 102-1 uyumlu imza doğrulamasını (zincir,
 OCSP/CRL, zaman damgası) sağlar. Gerçek PKCS#11 davranışı SoftHSM2 sanal belirteci, iptal ve uzun dönem
 senaryoları ise bellek içi bir test PKI'si (kök CA, CRL, RFC 3161 sunucusu) ile otomatik testlere dahil
-edilmiş; 71 birim ve entegrasyon testi başarıyla çalıştırılmıştır. Çalışma ayrıca yazılımın teknik olarak
+edilmiş; 78 birim ve entegrasyon testi başarıyla çalıştırılmıştır. Çalışma ayrıca yazılımın teknik olarak
 imza üretmesi ile hukuki geçerlilik arasındaki farkı tartışmakta ve İmzager karşılıklı uyumluluğu için bir
 yol haritası önermektedir.
 
@@ -34,7 +34,7 @@ signs with smart cards via PKCS#11 and produces CAdES, PAdES and XAdES signature
 architecture separates card access from signature formats, and optional RFC 3161 timestamping selects
 between the ETSI baseline B and T levels; LT/LTA levels and ETSI EN 319 102-1 validation (chain,
 OCSP/CRL, timestamps) are provided. Real PKCS#11 behaviour is exercised through a SoftHSM2 virtual token
-and revocation scenarios through an in-memory test PKI; 71 unit and integration tests pass. We discuss the
+and revocation scenarios through an in-memory test PKI; 78 unit and integration tests pass. We discuss the
 gap between technically producing a signature and its legal effect, and outline a roadmap towards
 interoperability with the reference client İmzager.
 
@@ -142,18 +142,18 @@ Zaman damgası testleri için Bouncy Castle ile bellek içi bir RFC 3161 sunucus
 dönem testleri için kök CA, imzacı ve TSA sertifikaları ile istek üzerine CRL üreten bir test PKI'si
 (`TestPki`) kullanılmıştır.
 
-### 5.2 Sonuçlar (v0.3.0)
+### 5.2 Sonuçlar (v0.4.0)
 
 | Test grubu | Sayı | Doğrulanan özellik |
 | --- | --- | --- |
 | Çekirdek ve PKCS#11 | 14 | Sertifika ayrıştırma, kütüphane bulma, SoftHSM'de imza |
 | Profil ve zaman damgası ayarları | 6 | BES/T/LT/LTA tutarlılığı, geçersiz/kimlik bilgili URL reddi |
 | CAdES | 7 | Bütünleşik/ayrık imza, BES öznitelikleri, değiştirilmiş belge tespiti, T profili |
-| PAdES | 4 | ETSI.CAdES.detached, çoklu imza, artımlı güncelleme, T profili |
+| PAdES | 10 | ETSI.CAdES.detached, çoklu imza, artımlı güncelleme, T profili, görünür imza kutusu |
 | XAdES | 4 | Enveloped imza, SigningCertificateV2, SignatureTimeStamp |
 | Doğrulama | 9 | Geçerli BES, güvenilmeyen kök, değiştirilmiş belge, T/LT/LTA, iptal edilmiş sertifika |
-| CLI | 27 | Argüman ayrıştırma, PIN reddi, TSA/profil seçimi, `verify` çıkış kodları |
-| **Toplam** | **71** | **71 başarılı, 0 başarısız** |
+| CLI | 28 | Argüman ayrıştırma, PIN reddi, TSA/profil seçimi, `verify` çıkış kodları |
+| **Toplam** | **78** | **78 başarılı, 0 başarısız** |
 
 Ek olarak `.deb` paketi temiz bir sisteme kurulmuş ve SoftHSM belirteci ile `esign sign` komutunun
 ürettiği CAdES dosyası `openssl cms -verify` ile kriptografik olarak doğrulanmıştır. Gerçek bir ESHS zaman

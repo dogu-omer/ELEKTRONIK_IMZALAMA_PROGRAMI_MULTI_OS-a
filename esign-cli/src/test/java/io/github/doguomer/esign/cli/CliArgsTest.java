@@ -99,4 +99,14 @@ class CliArgsTest {
         assertThrows(IllegalArgumentException.class,
                 () -> Main.timestamping(java.util.Optional.of("https://u:p@tsa.example.org"), null));
     }
+
+    @Test
+    void visibleOnlyForPdf() {
+        assertEquals("", CliArgs.parse(List.of("sign", "--in", "a.pdf", "--visible")).visible().orElseThrow());
+        assertEquals("2,10,20", CliArgs.parse(List.of("sign", "--in", "a.pdf", "--visible-at", "2,10,20"))
+                .visible().orElseThrow());
+        assertTrue(CliArgs.parse(List.of("sign", "--in", "a.pdf")).visible().isEmpty());
+        assertThrows(IllegalArgumentException.class,
+                () -> CliArgs.parse(List.of("sign", "--in", "a.docx", "--visible")));
+    }
 }

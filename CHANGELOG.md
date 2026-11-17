@@ -1,5 +1,9 @@
 # Değişiklik günlüğü / Changelog
 
+## esign v0.4.0 — Görünür PDF imzası
+
+- `--visible`, `--visible-at`: PAdES görünür imza kutusu (ad, zaman, neden; Türkçe karakter destekli). 78 test.
+
 ## esign v0.3.1 — Güvenlik güncellemesi
 
 - Bouncy Castle 1.80 → 1.86 (Dependabot: bcpkix, düzeltme 1.84). İşlev değişikliği yok.

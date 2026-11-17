@@ -13,6 +13,7 @@ import io.github.doguomer.esign.pkcs11.Pkcs11Config;
 import io.github.doguomer.esign.pkcs11.Pkcs11LibraryLocator;
 import io.github.doguomer.esign.pkcs11.Pkcs11SigningToken;
 import io.github.doguomer.esign.pades.PadesBesSigner;
+import io.github.doguomer.esign.pades.VisibleSignature;
 import io.github.doguomer.esign.validation.SignatureVerifier;
 import io.github.doguomer.esign.validation.VerificationReport;
 import io.github.doguomer.esign.xades.XadesBesSigner;
@@ -102,7 +103,9 @@ public final class Main {
             return 1;
         }
         SignatureSettings settings;
+        Optional<VisibleSignature> visible;
         try {
+            visible = a.visible().map(VisibleSignature::parse);
             settings = signatureSettings(a, timestamping(a.tsa(), System.getenv(TSA_ENV)), System.getenv(TRUST_ENV));
         } catch (IllegalArgumentException e) {
             err.println("Hata: " + e.getMessage());
@@ -128,14 +131,15 @@ public final class Main {
             String name = in.getFileName().toString();
             SignFormat format = a.effectiveFormat();
             byte[] signed = switch (format) {
-                case PADES -> new PadesBesSigner(token, settings).sign(content, name, alias, a.reason().orElse(null));
+                case PADES -> new PadesBesSigner(token, settings).sign(content, name, alias, a.reason().orElse(null),
+                        visible);
                 case XADES -> new XadesBesSigner(token, settings).sign(content, name, alias);
                 default -> new CadesBesSigner(token, settings).sign(content, name, alias,
                         a.detached() ? CadesPackaging.DETACHED : CadesPackaging.ATTACHED);
             };
             Files.write(target, signed, StandardOpenOption.CREATE_NEW);
             out.println("İmzalandı (" + format.label() + "-" + settings.profile().label()
-                    + (a.detached() ? ", ayrık" : "") + "): " + target);
+                    + (a.detached() ? ", ayrık" : "") + (visible.isPresent() ? ", görünür" : "") + "): " + target);
             if (!settings.timestamping().enabled()) {
                 out.println("Not: zaman damgası yok (BES). T profili için --tsa <url> verin.");
             }

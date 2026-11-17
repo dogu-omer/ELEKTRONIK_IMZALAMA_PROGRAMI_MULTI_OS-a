@@ -24,7 +24,8 @@ record CliArgs(
         Optional<Path> trust,
         boolean offline,
         Optional<Path> original,
-        Optional<Path> report) {
+        Optional<Path> report,
+        Optional<String> visible) {
 
     static final String USAGE = """
             Kullanım / Usage:
@@ -32,6 +33,7 @@ record CliArgs(
               esign sign --in <dosya> [--out <dosya>] [--format auto|cades|pades|xades] [--detached]
                          [--reason <metin>] [--alias <etiket>] [--tsa <url>] [--lib <pkcs11.so>] [--slot <n>]
                          [--level bes|t|lt|lta] [--trust <dosya|dizin>] [--offline]
+                         [--visible] [--visible-at son|<sayfa>|<sayfa>,<x>,<y>]
               esign verify --in <imzalı dosya> [--original <dosya>] [--trust <dosya|dizin>] [--offline]
                          [--report <rapor.xml>]
               esign version
@@ -55,6 +57,8 @@ record CliArgs(
               --trust     Güvenilir kök sertifika(lar): PEM/DER dosyası veya dizin (.crt .cer .pem .der).
                           Verilmezse ESIGN_TRUST_DIR denenir. Ör. Kamu SM kök sertifikaları.
               --offline   OCSP/CRL/AIA ağ sorgusu yapma (yalnızca imzanın içindeki veriler kullanılır).
+              --visible   PAdES: son sayfanın sağ altına görünür imza kutusu (ad, zaman, neden).
+              --visible-at Görünür imzanın yeri; x/y puan cinsinden, sayfanın sol üstünden.
               --original  verify: ayrık (.p7s) imzanın orijinal dosyası.
               --report    verify: ETSI EN 319 102-1 ayrıntılı XML raporunu bu dosyaya yaz.
             verify çıkış kodları: 0 geçerli, 3 belirsiz, 4 geçersiz, 1 hata, 2 kullanım hatası.
@@ -65,7 +69,7 @@ record CliArgs(
         if (argv.isEmpty()) {
             return new CliArgs("help", Optional.empty(), 0, false, Optional.empty(), Optional.empty(),
                     Optional.empty(), false, SignFormat.AUTO, Optional.empty(), Optional.empty(),
-                    Optional.empty(), Optional.empty(), false, Optional.empty(), Optional.empty());
+                    Optional.empty(), Optional.empty(), false, Optional.empty(), Optional.empty(), Optional.empty());
         }
         String cmd = argv.get(0);
         Optional<Path> lib = Optional.empty();
@@ -83,6 +87,7 @@ record CliArgs(
         boolean offline = false;
         Optional<Path> original = Optional.empty();
         Optional<Path> report = Optional.empty();
+        Optional<String> visible = Optional.empty();
         for (int i = 1; i < argv.size(); i++) {
             String a = argv.get(i);
             switch (a) {
@@ -101,6 +106,8 @@ record CliArgs(
                 case "--offline" -> offline = true;
                 case "--original" -> original = Optional.of(Path.of(value(argv, ++i, a)));
                 case "--report" -> report = Optional.of(Path.of(value(argv, ++i, a)));
+                case "--visible" -> visible = visible.or(() -> Optional.of(""));
+                case "--visible-at" -> visible = Optional.of(value(argv, ++i, a));
                 case "--pin" -> throw new IllegalArgumentException(
                         "--pin desteklenmez: PIN süreç listesinde görünür. Terminalden sorulur.");
                 default -> throw new IllegalArgumentException("Bilinmeyen seçenek: " + a);
@@ -111,7 +118,7 @@ record CliArgs(
         }
         if (cmd.equals("verify")) {
             return new CliArgs(cmd, lib, slot, login, in, out, alias, detached, format, reason, tsa,
-                    level, trust, offline, original, report);
+                    level, trust, offline, original, report, visible);
         }
         if (original.isPresent() || report.isPresent()) {
             throw new IllegalArgumentException("--original ve --report yalnızca verify için geçerlidir");
@@ -119,8 +126,11 @@ record CliArgs(
         if (detached && in.isPresent() && format.resolve(in.get()) != SignFormat.CADES) {
             throw new IllegalArgumentException("--detached yalnızca CAdES için geçerlidir (--format cades)");
         }
+        if (visible.isPresent() && in.isPresent() && format.resolve(in.get()) != SignFormat.PADES) {
+            throw new IllegalArgumentException("--visible yalnızca PDF (PAdES) imzası için geçerlidir");
+        }
         return new CliArgs(cmd, lib, slot, login, in, out, alias, detached, format, reason, tsa,
-                level, trust, offline, original, report);
+                level, trust, offline, original, report, visible);
     }
 
     /** Dosyaya uygulanacak gerçek biçim. */
