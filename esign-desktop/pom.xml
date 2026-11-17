@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.doguomer.esign</groupId>
+    <artifactId>esign-parent</artifactId>
+    <version>0.7.0</version>
+  </parent>
+  <artifactId>esign-desktop</artifactId>
+  <description>Türkçe masaüstü arayüzü (Swing; Linux ve macOS)</description>
+  <dependencies>
+    <dependency>
+      <groupId>io.github.doguomer.esign</groupId>
+      <artifactId>esign-token-pkcs11</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.doguomer.esign</groupId>
+      <artifactId>esign-cades</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.doguomer.esign</groupId>
+      <artifactId>esign-pades</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.doguomer.esign</groupId>
+      <artifactId>esign-xades</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.doguomer.esign</groupId>
+      <artifactId>esign-validation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.doguomer.esign</groupId>
+      <artifactId>esign-dss-support</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

@@ -33,14 +33,24 @@ ARGS=(--type "$TYPE" --name esign --app-version "$APP_VERSION"
   --input "$STAGE" --main-jar esign.jar --main-class io.github.doguomer.esign.cli.Main
   --add-modules "$MODULES" --jlink-options "--strip-debug --no-man-pages --no-header-files"
   --java-options "-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8"
-  --description "E-imza (CAdES/PAdES/XAdES, PKCS#11/AKIS) - e-signature CLI"
+  --description "E-imza (CAdES/PAdES/XAdES, PKCS#11/AKIS) - e-signature CLI ve masaustu"
   --vendor "Omer Dogu" --copyright "GPL-3.0-or-later" --license-file "$ROOT/LICENSE"
   --dest "$OUT")
 
+# Masaüstü arayüzü için ikinci başlatıcı (Linux menü kısayolu). macOS'ta uygulama Finder'dan açılınca
+# (terminal yoksa) arayüz kendiliğinden başlar. Second launcher for the desktop UI.
+cat > "$STAGE/esign-gui.properties" <<PROPS
+main-class=io.github.doguomer.esign.desktop.DesktopApp
+description=esign - Elektronik Imza (masaustu)
+linux-shortcut=true
+PROPS
+
 case "$TYPE" in
   deb) ARGS+=(--linux-package-name esign --linux-deb-maintainer "dogu-omer@users.noreply.github.com"
-              --linux-app-category utils --linux-package-deps "pcscd") ;;
-  rpm) ARGS+=(--linux-package-name esign --linux-app-category Utilities) ;;
+              --linux-app-category utils --linux-package-deps "pcscd" --linux-menu-group "Office;Utility" --linux-shortcut
+              --add-launcher "esign-gui=$STAGE/esign-gui.properties") ;;
+  rpm) ARGS+=(--linux-package-name esign --linux-app-category Utilities
+              --add-launcher "esign-gui=$STAGE/esign-gui.properties") ;;
   pkg|dmg) ARGS+=(--mac-package-identifier io.github.doguomer.esign --mac-package-name esign) ;;
 esac
 if [[ "$TYPE" == "app-image" ]]; then

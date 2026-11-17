@@ -6,7 +6,7 @@
   <parent>
     <groupId>io.github.doguomer.esign</groupId>
     <artifactId>esign-parent</artifactId>
-    <version>0.6.0</version>
+    <version>0.7.0</version>
   </parent>
   <artifactId>esign-cli</artifactId>
   <description>Komut satırı arayüzü</description>
@@ -38,6 +38,10 @@
     <dependency>
       <groupId>io.github.doguomer.esign</groupId>
       <artifactId>esign-validation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.doguomer.esign</groupId>
+      <artifactId>esign-desktop</artifactId>
     </dependency>
     <dependency>
       <groupId>io.github.doguomer.esign</groupId>

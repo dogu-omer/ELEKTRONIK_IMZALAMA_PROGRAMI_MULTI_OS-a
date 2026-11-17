@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.doguomer.esign</groupId>
   <artifactId>esign-parent</artifactId>
-  <version>0.6.0</version>
+  <version>0.7.0</version>
   <packaging>pom</packaging>
   <name>ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS</name>
   <description>Linux/macOS e-imza platformu (CAdES/PAdES/XAdES, PKCS#11)</description>
@@ -21,6 +21,7 @@
     <module>esign-pades</module>
     <module>esign-xades</module>
     <module>esign-validation</module>
+    <module>esign-desktop</module>
     <module>esign-cli</module>
     <module>esign-api</module>
   </modules>
@@ -100,6 +101,11 @@
       <dependency>
         <groupId>io.github.doguomer.esign</groupId>
         <artifactId>esign-validation</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.doguomer.esign</groupId>
+        <artifactId>esign-desktop</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

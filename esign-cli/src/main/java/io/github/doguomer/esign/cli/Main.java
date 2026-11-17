@@ -16,6 +16,8 @@ import io.github.doguomer.esign.pades.PadesBesSigner;
 import io.github.doguomer.esign.pades.VisibleSignature;
 import io.github.doguomer.esign.validation.SignatureVerifier;
 import io.github.doguomer.esign.validation.VerificationReport;
+import io.github.doguomer.esign.validation.VerificationText;
+import io.github.doguomer.esign.desktop.DesktopApp;
 import io.github.doguomer.esign.xades.XadesBesSigner;
 import java.io.Console;
 import java.io.IOException;
@@ -38,6 +40,11 @@ public final class Main {
     private Main() {}
 
     public static void main(String[] args) {
+        // "esign gui" veya Finder/masaüstü kısayolundan (terminalsiz) açılış → masaüstü arayüzü
+        boolean gui = args.length == 1 && args[0].equals("gui");
+        if ((gui || (args.length == 0 && System.console() == null)) && DesktopApp.launch()) {
+            return;
+        }
         System.exit(run(List.of(args), System.out, System.err));
     }
 
@@ -58,6 +65,10 @@ public final class Main {
             case "version", "--version" -> {
                 out.println("esign " + version());
                 yield 0;
+            }
+            case "gui" -> {
+                err.println("Hata: grafik ortam bulunamadı (DISPLAY yok); masaüstü arayüzü açılamadı.");
+                yield 1;
             }
             case "list-certs" -> listCerts(a, out, err);
             case "sign" -> sign(a, out, err);

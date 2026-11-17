@@ -1,19 +1,17 @@
-package io.github.doguomer.esign.cli;
+package io.github.doguomer.esign.validation;
 
-import io.github.doguomer.esign.validation.SignatureResult;
-import io.github.doguomer.esign.validation.VerificationReport;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 /** Doğrulama raporunun insan okunur (TR/EN) metni. Human-readable verification summary. */
-final class VerificationText {
+public final class VerificationText {
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss xxx");
 
     private VerificationText() {}
 
-    static String render(VerificationReport r, boolean noTrustAnchors, ZoneId zone) {
+    public static String render(VerificationReport r, boolean noTrustAnchors, ZoneId zone) {
         StringBuilder sb = new StringBuilder();
         int n = r.signatures().size();
         if (n == 0) {

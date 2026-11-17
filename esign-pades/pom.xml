@@ -6,7 +6,7 @@
   <parent>
     <groupId>io.github.doguomer.esign</groupId>
     <artifactId>esign-parent</artifactId>
-    <version>0.6.0</version>
+    <version>0.7.0</version>
   </parent>
   <artifactId>esign-pades</artifactId>
   <description>PAdES (PDF) imza üretimi (EU DSS + PDFBox)</description>

@@ -12,7 +12,7 @@ damgası** ile BES veya T profilinde imza atar. İmza motoru olarak Avrupa Komis
 with a PKCS#11 smart card or USB token (e.g. Turkish AKİS cards), with optional **RFC 3161
 timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 319 102-1, OCSP/CRL). Built on the European Commission's [EU DSS](https://github.com/esig/dss).
 
-> ⚠️ **Durum / Status: v0.6.0 — Faz 6 / 7 sürüyor.** İmza üretimi, doğrulama, OCSP/CRL, LT/LTA, görünür PDF imzası, REST API ve Docker hazırdır;
+> ⚠️ **Durum / Status: v0.7.0 — Faz 6 / 7 sürüyor.** İmza üretimi, doğrulama, OCSP/CRL, LT/LTA, görünür PDF imzası, REST API, Docker ve masaüstü arayüzü hazırdır;
 > **İmzager karşılıklı testleri ve gerçek ESHS/Kamu SM ortamında uçtan uca test henüz yapılmadı.** Bu yazılım
 > BTK veya TÜBİTAK tarafından onaylanmış değildir. / Signing, validation, revocation checks and LT/LTA
 > work; İmzager interoperability and end-to-end tests against real Turkish CAs/TSAs are not done yet.
@@ -35,6 +35,7 @@ timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 
 11. [Lisans / License](#11-lisans--license)
 12. [REST API](#12-rest-api)
 13. [Docker](#13-docker)
+14. [Masaüstü arayüzü / Desktop app](#14-masaüstü-arayüzü--desktop-app)
 
 ---
 
@@ -55,6 +56,7 @@ timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 
 | REST API: doğrulama + iki aşamalı imza (hazırla → kartta imzala → birleştir), OpenAPI | ✅ v0.5.0 | OpenAPI 3.1 |
 | Sunucu üzerinden imza (`esign sign --server`) / sign via API | ✅ v0.5.0 | — |
 | Docker görüntüsü ve docker-compose / container image | ✅ v0.6.0 | OCI |
+| Türkçe masaüstü arayüzü (Linux, macOS) / desktop app | ✅ v0.7.0 | — |
 
 ## 2. Kurulum / Installation
 
@@ -268,7 +270,7 @@ validate signatures or check revocation, and must not be the sole basis for a le
 
 ```bash
 sudo apt install openjdk-21-jdk maven            # macOS: brew install openjdk@21 maven
-mvn -B verify                                     # 98 test
+mvn -B verify                                     # 105 test
 java -jar esign-cli/target/esign.jar help
 
 # Kartsız gerçek PKCS#11 testi (SoftHSM2) / real PKCS#11 tests without a card
@@ -292,7 +294,8 @@ Her modül tek bir işten sorumludur ve yalnızca alttaki katmana bağımlıdır
 *Each module has one job and depends only on the layer below.*
 
 ```text
-esign-cli ──► esign-cades ─┐
+esign-cli ──► esign-desktop (Swing) ──► cades/pades/xades + validation + token-pkcs11
+          ├─► esign-cades ─┐
           ├─► esign-pades ─┼─► esign-dss-support ──► esign-core (SigningToken portu, bağımlılıksız)
           ├─► esign-xades ─┤           │                    ▲
           ├─► esign-validation ┘       │                    │
@@ -308,7 +311,8 @@ esign-api (Spring Boot) ──► cades/pades/xades + validation (kart yok; imza
 | `esign-dss-support` | Kart ↔ EU DSS köprüsü; `SignatureProfile` (B/T/LT/LTA), `Timestamping`, `TrustSettings` (kökler, OCSP/CRL) |
 | `esign-validation` | `SignatureVerifier`: ETSI EN 319 102-1 doğrulama, sade sonuç + XML rapor |
 | `esign-cades` / `-pades` / `-xades` | Biçime özgü imza üreticiler |
-| `esign-cli` | `esign` komut satırı; `--server` ile API istemcisi |
+| `esign-desktop` | Türkçe Swing masaüstü arayüzü: dosya, sertifika, PIN, imzala, doğrula |
+| `esign-cli` | `esign` komut satırı; `--server` ile API istemcisi; `esign gui` |
 | `esign-api` | Spring Boot REST API: doğrulama, iki aşamalı imza, OpenAPI; veritabanı gerektirmez |
 
 Yeni bir kart türü için yalnızca `SigningToken` uygulanır; yeni bir mevzuat profili için yalnızca ilgili
@@ -321,7 +325,7 @@ imzalayıcı değişir. Akademik açıklama: [docs/makale-taslagi.md](docs/makal
 3. ✅ PAdES-BES ve XAdES-BES
 4. ✅ RFC 3161 zaman damgası (isteğe bağlı, T profili), `.deb` / macOS paketleri
 5. ✅ İmza doğrulama (`esign verify`), OCSP/CRL, zincir, LT/LTA
-6. ⏳ İmzager karşılıklı uyumluluk testleri, ✅ görünür PDF imzası (v0.4.0), ESHS kimlik doğrulamalı zaman damgası, masaüstü arayüz
+6. ⏳ İmzager karşılıklı uyumluluk testleri, ✅ görünür PDF imzası (v0.4.0), ESHS kimlik doğrulamalı zaman damgası, ✅ masaüstü arayüz (v0.7.0)
 7. ✅ REST API (Spring Boot, v0.5.0), ✅ Docker (v0.6.0)
 
 ## 11. Lisans / License
@@ -394,3 +398,24 @@ docker run -d -p 127.0.0.1:8080:8080 -e ESIGN_API_KEY=... ghcr.io/dogu-omer/esig
 Güvenilir kök sertifikaları (Kamu SM vb.) `./trust` klasörüne koyup `.env` içinde
 `ESIGN_TRUST_DIR_IN_CONTAINER=/trust` yazın. Zaman damgası için `ESIGN_TSA_URL`. CI her gönderimde görüntüyü
 derleyip sağlık ve OpenAPI denetimi yapar; sürümlerde `ghcr.io/dogu-omer/esign-api:<sürüm>` yayımlanır.
+
+## 14. Masaüstü arayüzü / Desktop app
+
+Komut satırı bilmeyen kullanıcılar için Türkçe pencere: **İmzala**, **Doğrula** ve **Hakkında** sekmeleri.
+*A Turkish GUI for users who do not use the terminal.*
+
+| Nasıl açılır / How to open | |
+| --- | --- |
+| Linux (`.deb`) | Uygulama menüsü → Ofis → **esign-gui**; veya terminalde `esign gui` |
+| macOS (`.pkg`) | Finder'dan `esign` uygulamasını açın (konsolsuz başlatma arayüzü açar) |
+| JAR | `java -jar esign.jar gui` |
+
+İmzala: dosya seçin → PKCS#11 kütüphanesi otomatik bulunur (AKİS) → **Karttaki sertifikalar** → biçim
+(otomatik/CAdES/PAdES/XAdES), profil (BES/T/LT/LTA), ayrık imza, görünür PDF imzası, neden → **İmzala** → PIN.
+PIN yalnızca parola kutusunda girilir, hiçbir yere yazılmaz ve iş bitince bellekten silinir; özel anahtar kartı
+terk etmez. Mevcut dosyanın üzerine yazılmaz (`belge (2).pdf` gibi yeni ad verilir). Zaman damgası adresi
+`ESIGN_TSA_URL` ortam değişkeninden doldurulur.
+
+Doğrula: imzalı dosya (ayrık imzada asıl belge), güvenilir kök klasörü ve çevrimdışı seçeneği; sonuç
+GEÇERLİ / BELİRSİZ / GEÇERSİZ olarak renkli gösterilir.
+

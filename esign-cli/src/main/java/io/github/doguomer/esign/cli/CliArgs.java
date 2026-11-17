@@ -37,6 +37,7 @@ record CliArgs(
                          [--visible] [--visible-at son|<sayfa>|<sayfa>,<x>,<y>] [--server <url>]
               esign verify --in <imzalı dosya> [--original <dosya>] [--trust <dosya|dizin>] [--offline]
                          [--report <rapor.xml>]
+              esign gui          (Türkçe masaüstü arayüzü / desktop UI)
               esign version
               esign help
 

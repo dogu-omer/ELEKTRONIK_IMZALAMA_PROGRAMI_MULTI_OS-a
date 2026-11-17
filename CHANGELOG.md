@@ -1,5 +1,13 @@
 # Değişiklik günlüğü / Changelog
 
+## esign v0.7.0 — Masaüstü arayüzü
+
+- Yeni `esign-desktop` modülü: Türkçe Swing arayüzü (İmzala / Doğrula / Hakkında). Dosya, kart sertifikası,
+  biçim, profil, ayrık/görünür imza, PIN (parola kutusu, kullanım sonrası sıfırlanır), doğrulama sonucu.
+- `esign gui`; konsolsuz başlatmada (Finder, uygulama menüsü) arayüz açılır. `.deb` menü kısayolu `esign-gui`.
+- `VerificationText` `esign-validation` modülüne taşındı (CLI ve arayüz ortak kullanır).
+- 105 test (masaüstü: 7). SoftHSM kartıyla Xvfb altında arayüzden imzalama denendi.
+
 ## esign v0.6.0 — Docker
 
 - `Dockerfile` (çok aşamalı; kök olmayan kullanıcı, sağlık denetimi) ve `docker-compose.yml` (salt okunur kök,
