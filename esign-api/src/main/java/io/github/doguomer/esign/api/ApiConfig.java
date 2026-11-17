@@ -17,6 +17,7 @@ import java.util.List;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 
 @Configuration
 class ApiConfig {
@@ -72,11 +73,41 @@ class ApiConfig {
         return new SignatureVerifier(trust);
     }
 
+    /**
+     * Varsayılan olarak kapalı-güvenli (fail-closed): anahtar yoksa uygulama başlamaz. Yalnızca yerel geliştirme
+     * için ESIGN_ALLOW_ANONYMOUS=true ile açıkça devre dışı bırakılabilir.
+     */
     @Bean
     FilterRegistrationBean<ApiKeyFilter> apiKeyFilter(EsignProperties p) {
-        var reg = new FilterRegistrationBean<>(new ApiKeyFilter(p.apiKey()));
+        if (!p.hasApiKey()) {
+            if (!p.allowAnonymous()) {
+                throw new IllegalStateException("ESIGN_API_KEY veya ESIGN_API_KEY_SHA256 tanımlı değil. Güçlü bir "
+                        + "anahtar üretin (openssl rand -base64 32) ya da yalnızca yerel geliştirme için "
+                        + "ESIGN_ALLOW_ANONYMOUS=true verin. / API key required.");
+            }
+            var off = new FilterRegistrationBean<ApiKeyFilter>();
+            off.setEnabled(false);
+            return off;
+        }
+        var reg = new FilterRegistrationBean<>(ApiKeyFilter.of(p.apiKey(), p.apiKeySha256()));
         reg.addUrlPatterns("/api/*");
-        reg.setEnabled(p.hasApiKey());
+        reg.setOrder(Ordered.HIGHEST_PRECEDENCE + 20);
+        return reg;
+    }
+
+    @Bean
+    FilterRegistrationBean<RateLimitFilter> rateLimitFilter(EsignProperties p, Clock clock) {
+        var reg = new FilterRegistrationBean<>(new RateLimitFilter(p.rateLimit(), clock));
+        reg.addUrlPatterns("/api/*");
+        reg.setOrder(Ordered.HIGHEST_PRECEDENCE + 10);
+        return reg;
+    }
+
+    @Bean
+    FilterRegistrationBean<SecurityHeadersFilter> securityHeadersFilter() {
+        var reg = new FilterRegistrationBean<>(new SecurityHeadersFilter());
+        reg.addUrlPatterns("/*");
+        reg.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return reg;
     }
 

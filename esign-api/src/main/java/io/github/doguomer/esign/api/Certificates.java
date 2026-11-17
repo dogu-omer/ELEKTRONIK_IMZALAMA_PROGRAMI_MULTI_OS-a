@@ -27,7 +27,7 @@ final class Certificates {
             }
             return List.copyOf(out);
         } catch (CertificateException e) {
-            throw new IllegalArgumentException("Sertifika okunamadı (PEM veya DER olmalı): " + e.getMessage(), e);
+            throw new IllegalArgumentException("Sertifika okunamadı (PEM veya DER olmalı)", e);
         }
     }
 }

@@ -41,7 +41,14 @@ jobs:
         run: docker build -t esign-api:ci .
       - name: Smoke test
         run: |
-          docker run -d --name api -p 8080:8080 --read-only --tmpfs /tmp --cap-drop ALL esign-api:ci
+          KEY=$(openssl rand -base64 32)
+          docker run -d --name api -p 8080:8080 --read-only --tmpfs /tmp --cap-drop ALL \
+            -e ESIGN_API_KEY="$KEY" esign-api:ci
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/actuator/health && break; sleep 2; done
           curl -fsS http://127.0.0.1:8080/v3/api-docs | grep -q '/api/v1/signatures/prepare'
+          # anahtarsız istek 401, anahtarlı istek 401 değil
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE http://127.0.0.1:8080/api/v1/signatures/x)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H "X-API-Key: $KEY" -X DELETE http://127.0.0.1:8080/api/v1/signatures/x)" = 404
+          # anahtarsız kapsayıcı başlamamalı (fail-closed)
+          docker run --rm esign-api:ci > noKey.log 2>&1 && exit 1 || grep -q ESIGN_API_KEY noKey.log
           docker rm -f api

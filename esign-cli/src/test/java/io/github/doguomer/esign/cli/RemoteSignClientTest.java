@@ -108,6 +108,11 @@ class RemoteSignClientTest {
         assertThrows(IllegalArgumentException.class, () -> new RemoteSignClient(URI.create("ftp://x"), null));
         assertThrows(IllegalArgumentException.class,
                 () -> new RemoteSignClient(URI.create("http://u:p@host"), null));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RemoteSignClient(URI.create("http://imza.example.org"), "anahtar"));
+        new RemoteSignClient(URI.create("https://imza.example.org"), "anahtar");
+        new RemoteSignClient(URI.create("http://127.0.0.1:8080"), "anahtar");
+        new RemoteSignClient(URI.create("http://[::1]:8080"), "anahtar");
     }
 
     @Test

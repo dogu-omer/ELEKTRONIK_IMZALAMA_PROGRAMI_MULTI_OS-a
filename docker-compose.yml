@@ -12,7 +12,11 @@ services:
       ESIGN_TSA_URL: ${ESIGN_TSA_URL:-}
       ESIGN_TRUST_DIR: ${ESIGN_TRUST_DIR_IN_CONTAINER:-}
       ESIGN_OFFLINE: ${ESIGN_OFFLINE:-false}
+      # Anahtar zorunludur; yoksa API başlamaz. ESIGN_API_KEY_SHA256 ile yalnızca özet de verilebilir.
       ESIGN_API_KEY: ${ESIGN_API_KEY:-}
+      ESIGN_API_KEY_SHA256: ${ESIGN_API_KEY_SHA256:-}
+      ESIGN_RATE_LIMIT: ${ESIGN_RATE_LIMIT:-120}
+      ESIGN_API_DOCS: ${ESIGN_API_DOCS:-true}
       ESIGN_SESSION_TTL: ${ESIGN_SESSION_TTL:-10m}
       ESIGN_MAX_SESSIONS: ${ESIGN_MAX_SESSIONS:-200}
     volumes:

@@ -134,8 +134,7 @@ public final class RemoteSigningService {
         try {
             tbs = service.getDataToSign(doc, params);
         } catch (RuntimeException e) {
-            throw new IllegalArgumentException(f.dssName() + " imzası hazırlanamadı (belge biçimi uygun mu?): "
-                    + e.getMessage(), e);
+            throw new IllegalArgumentException(f.dssName() + " imzası hazırlanamadı (belge biçimi uygun mu?)", e);
         }
         SignatureAlgorithm algo = algorithmFor(r.chain().get(0));
         String level = f.dssName() + "-" + s.profile().label();
@@ -157,8 +156,7 @@ public final class RemoteSigningService {
         try {
             signed = s.service().signDocument(s.document(), s.params(), new SignatureValue(s.algorithm(), signatureValue));
         } catch (RuntimeException e) {
-            throw new TokenException("İmzalı belge üretilemedi (zaman damgası/OCSP/CRL alınamamış olabilir): "
-                    + e.getMessage(), e);
+            throw new TokenException("İmzalı belge üretilemedi (zaman damgası/OCSP/CRL alınamamış olabilir)", e);
         }
         try (var out = new ByteArrayOutputStream()) {
             signed.writeTo(out);

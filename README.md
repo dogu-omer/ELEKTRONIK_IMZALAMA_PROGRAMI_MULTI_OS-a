@@ -379,7 +379,11 @@ Ayarlar yalnızca ortam değişkenleriyle verilir (sırlar depoya girmez) / conf
 
 | Değişken | Varsayılan | Açıklama |
 | --- | --- | --- |
-| `ESIGN_API_KEY` | boş | Doluysa `/api/**` için `X-API-Key` başlığı zorunlu (sabit zamanlı karşılaştırma) |
+| `ESIGN_API_KEY` | — (zorunlu) | `/api/**` için `X-API-Key`; en az 24 karakter. Sunucu yalnızca SHA-256 özetini tutar, sabit zamanlı karşılaştırır. Anahtar yoksa API **başlamaz** |
+| `ESIGN_API_KEY_SHA256` | boş | Anahtar yerine yalnızca hex SHA-256 özet(ler)i; virgülle birden çok = anahtar rotasyonu |
+| `ESIGN_RATE_LIMIT` | `120` | IP başına dakikalık `/api/**` istek sınırı (aşılınca `429` + `Retry-After`) |
+| `ESIGN_API_DOCS` | `true` | `false`: Swagger UI ve OpenAPI belgesi yayınlanmaz |
+| `ESIGN_ALLOW_ANONYMOUS` | `false` | Yalnızca yerel geliştirme: anahtarsız çalıştırma |
 | `ESIGN_TSA_URL` | boş | RFC 3161 TSA; boşsa yalnızca BES |
 | `ESIGN_TRUST_DIR` | boş | Güvenilir kökler (doğrulama ve LT/LTA için) |
 | `ESIGN_OFFLINE` | `false` | `true`: OCSP/CRL/AIA sorgusu yok |
@@ -387,7 +391,8 @@ Ayarlar yalnızca ortam değişkenleriyle verilir (sırlar depoya girmez) / conf
 
 Veritabanı gerekmez: API durumsuzdur; bekleyen imzalar yalnızca bellekte ve kısa süre tutulur, belgeler diske
 yazılmaz. Dosya sınırı 25 MB. İnternete açarken önüne TLS sonlandıran bir ters vekil (nginx, Caddy) koyun ve
-`ESIGN_API_KEY` tanımlayın. *No database needed. Put a TLS reverse proxy in front and set an API key before
+`ESIGN_API_KEY` tanımlayın. CLI, API anahtarını şifresiz `http` ile yalnızca `localhost`'a gönderir; uzak sunucu
+için `https` zorunludur. Ayrıntılar: [SECURITY.md](SECURITY.md). *No database needed. Put a TLS reverse proxy in front and set an API key before
 exposing it.* PAdES görünür imza kutusu şimdilik yalnızca CLI'dadır.
 
 ## 13. Docker

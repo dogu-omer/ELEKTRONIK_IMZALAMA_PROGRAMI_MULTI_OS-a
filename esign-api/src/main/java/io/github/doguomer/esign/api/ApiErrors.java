@@ -36,4 +36,26 @@ class ApiErrors {
     ProblemDetail unprocessable(TokenException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, e.getMessage());
     }
+
+    /**
+     * Beklenmeyen hata: istemciye ayrıntı verilmez. Log'a yalnızca hata sınıfı ve bir izleme kimliği yazılır;
+     * belge içeriği, sertifika sahibi gibi kişisel veriler loglanmaz (KVKK/GDPR).
+     */
+    @ExceptionHandler(Exception.class)
+    ProblemDetail internal(Exception e) {
+        if (e instanceof org.springframework.web.ErrorResponse er) { // Spring'in 4xx hataları (ör. bozuk JSON)
+            return er.getBody();
+        }
+        if (e instanceof org.springframework.http.converter.HttpMessageNotReadableException
+                || e instanceof org.springframework.beans.TypeMismatchException) {
+            return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "İstek gövdesi veya parametre geçersiz");
+        }
+        String ref = java.util.UUID.randomUUID().toString();
+        LOG.error("İç hata ref={} type={}", ref, e.getClass().getName());
+        var pd = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Beklenmeyen hata / internal error (ref " + ref + ")");
+        return pd;
+    }
+
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ApiErrors.class);
 }

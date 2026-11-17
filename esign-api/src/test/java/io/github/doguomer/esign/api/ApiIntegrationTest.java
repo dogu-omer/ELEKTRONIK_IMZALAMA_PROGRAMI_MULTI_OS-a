@@ -19,12 +19,12 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** HTTP uçtan uca: hazırla → (istemci kartı) → birleştir → doğrula; API anahtarı; OpenAPI. */
-@SpringBootTest(properties = {"esign.api-key=test-anahtar", "esign.offline=true"})
+@SpringBootTest(properties = {"esign.api-key=test-anahtari-en-az-24-karakter", "esign.offline=true"})
 @AutoConfigureMockMvc
 class ApiIntegrationTest {
 
     private static TestPki pki;
-    private static final String KEY = "test-anahtar";
+    private static final String KEY = "test-anahtari-en-az-24-karakter";
 
     @Autowired MockMvc mvc;
 
