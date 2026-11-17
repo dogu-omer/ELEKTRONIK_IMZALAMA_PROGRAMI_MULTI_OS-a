@@ -12,7 +12,7 @@ damgası** ile BES veya T profilinde imza atar. İmza motoru olarak Avrupa Komis
 with a PKCS#11 smart card or USB token (e.g. Turkish AKİS cards), with optional **RFC 3161
 timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 319 102-1, OCSP/CRL). Built on the European Commission's [EU DSS](https://github.com/esig/dss).
 
-> ⚠️ **Durum / Status: v0.3.0 — Faz 5 / 7.** İmza üretimi, doğrulama, OCSP/CRL ve LT/LTA hazırdır;
+> ⚠️ **Durum / Status: v0.3.1 — Faz 5 / 7.** İmza üretimi, doğrulama, OCSP/CRL ve LT/LTA hazırdır;
 > **İmzager karşılıklı testleri ve gerçek ESHS/Kamu SM ortamında uçtan uca test henüz yapılmadı.** Bu yazılım
 > BTK veya TÜBİTAK tarafından onaylanmış değildir. / Signing, validation, revocation checks and LT/LTA
 > work; İmzager interoperability and end-to-end tests against real Turkish CAs/TSAs are not done yet.

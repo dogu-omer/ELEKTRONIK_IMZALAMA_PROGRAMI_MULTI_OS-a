@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.doguomer.esign</groupId>
   <artifactId>esign-parent</artifactId>
-  <version>0.3.0</version>
+  <version>0.3.1</version>
   <packaging>pom</packaging>
   <name>ELEKTRONIK_IMZALAMA_PROGRAMI_MULTI_OS</name>
   <description>Linux/macOS e-imza platformu (CAdES/PAdES/XAdES, PKCS#11)</description>
@@ -28,7 +28,7 @@
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>5.11.4</junit.version>
-    <bouncycastle.version>1.80</bouncycastle.version>
+    <bouncycastle.version>1.86</bouncycastle.version>
     <dss.version>6.5.1</dss.version>
   </properties>
 
@@ -135,6 +135,16 @@
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcpkix-jdk18on</artifactId>
+        <version>${bouncycastle.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk18on</artifactId>
+        <version>${bouncycastle.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcutil-jdk18on</artifactId>
         <version>${bouncycastle.version}</version>
       </dependency>
     </dependencies>

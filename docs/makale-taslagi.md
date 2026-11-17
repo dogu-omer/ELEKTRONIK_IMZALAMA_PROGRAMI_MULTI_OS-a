@@ -127,7 +127,7 @@ Kök sertifikalar pakete gömülmez; kullanıcı resmî kaynaktan alır.
 
 ## 4. Uygulama
 
-Platform Java 21 ile yazılmış, EU DSS 6.5.1 ve Bouncy Castle 1.80 kullanmaktadır. Dağıtım `jpackage`
+Platform Java 21 ile yazılmış, EU DSS 6.5.1 ve Bouncy Castle 1.86 kullanmaktadır. Dağıtım `jpackage`
 ile jlink'le küçültülmüş gömülü bir çalışma ortamı içerir; `jdk.crypto.cryptoki` modülü PKCS#11
 erişimi için açıkça eklenmiştir. Paketler GitHub Actions üzerinde Linux (`.deb`) ve macOS (`.pkg`)
 için üretilmekte, SHA-256 özetleriyle yayımlanmaktadır.

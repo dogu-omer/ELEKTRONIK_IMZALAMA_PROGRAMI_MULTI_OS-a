@@ -41,9 +41,16 @@ class PadesBesSignerTest {
         }
     }
 
+    /** /Contents sıfırla doldurulur; BC 1.81+ fazla baytı reddeder, yalnızca DER nesnesini alır. */
+    private static byte[] cmsBytes(byte[] signedPdf, PDSignature sig) throws Exception {
+        try (var in = new org.bouncycastle.asn1.ASN1InputStream(sig.getContents(signedPdf))) {
+            return in.readObject().getEncoded();
+        }
+    }
+
     private boolean verify(byte[] signedPdf, PDSignature sig) throws Exception {
         byte[] signedContent = sig.getSignedContent(signedPdf);
-        CMSSignedData cms = new CMSSignedData(new CMSProcessableByteArray(signedContent), sig.getContents(signedPdf));
+        CMSSignedData cms = new CMSSignedData(new CMSProcessableByteArray(signedContent), cmsBytes(signedPdf, sig));
         SignerInformation si = cms.getSignerInfos().getSigners().iterator().next();
         return si.verify(new JcaSimpleSignerInfoVerifierBuilder().build(token.cert));
     }
@@ -92,7 +99,7 @@ class PadesBesSignerTest {
         try (PDDocument doc = Loader.loadPDF(signed)) {
             PDSignature sig = doc.getSignatureDictionaries().get(0);
             assertTrue(verify(signed, sig));
-            CMSSignedData cms = new CMSSignedData(sig.getContents(signed));
+            CMSSignedData cms = new CMSSignedData(cmsBytes(signed, sig));
             SignerInformation si = cms.getSignerInfos().getSigners().iterator().next();
             assertNotNull(si.getUnsignedAttributes().get(PKCSObjectIdentifiers.id_aa_signatureTimeStampToken),
                     "PAdES-T: imza zaman damgası gerekli");

@@ -6,7 +6,7 @@
   <parent>
     <groupId>io.github.doguomer.esign</groupId>
     <artifactId>esign-parent</artifactId>
-    <version>0.3.0</version>
+    <version>0.3.1</version>
   </parent>
   <artifactId>esign-cades</artifactId>
   <description>CAdES imza üretimi (EU DSS, LGPL-2.1)</description>
