@@ -28,7 +28,7 @@ jobs:
         run: |
           sudo dpkg -i dist/*.deb || sudo apt-get -f install -y
           /opt/esign/bin/esign version
-      - run: cp esign-cli/target/esign.jar dist/
+      - run: cp esign-cli/target/esign.jar esign-api/target/esign-api.jar dist/
       - uses: actions/upload-artifact@v4
         with: { name: linux, path: dist/* }
   macos:

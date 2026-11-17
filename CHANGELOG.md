@@ -1,5 +1,14 @@
 # Değişiklik günlüğü / Changelog
 
+## esign v0.5.0 — REST API
+
+- Yeni `esign-api` modülü (Spring Boot 4.1, OpenAPI 3.1 / Swagger UI): `POST /api/v1/validations` doğrulama,
+  `POST /api/v1/signatures/prepare` + `/{id}/complete` iki aşamalı imza (özel anahtar ve PIN sunucuya gitmez).
+  Sunucu kart imzasını açık anahtarla doğrulamadan belge üretmez; oturumlar tek kullanımlık, süreli ve sınırlı.
+  İsteğe bağlı `ESIGN_API_KEY` (X-API-Key). Veritabanı yok.
+- `esign sign --server <url>`: kart bu bilgisayarda, imza sunucu üzerinden.
+- 98 test (API: 15, istemci: 5). SoftHSM kartı → CLI → API kapsayıcısı uçtan uca denendi.
+
 ## esign v0.4.0 — Görünür PDF imzası
 
 - `--visible`, `--visible-at`: PAdES görünür imza kutusu (ad, zaman, neden; Türkçe karakter destekli). 78 test.

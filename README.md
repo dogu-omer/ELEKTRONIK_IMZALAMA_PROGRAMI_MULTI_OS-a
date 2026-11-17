@@ -12,7 +12,7 @@ damgası** ile BES veya T profilinde imza atar. İmza motoru olarak Avrupa Komis
 with a PKCS#11 smart card or USB token (e.g. Turkish AKİS cards), with optional **RFC 3161
 timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 319 102-1, OCSP/CRL). Built on the European Commission's [EU DSS](https://github.com/esig/dss).
 
-> ⚠️ **Durum / Status: v0.4.0 — Faz 6 / 7 sürüyor.** İmza üretimi, doğrulama, OCSP/CRL, LT/LTA ve görünür PDF imzası hazırdır;
+> ⚠️ **Durum / Status: v0.5.0 — Faz 6 / 7 sürüyor.** İmza üretimi, doğrulama, OCSP/CRL, LT/LTA, görünür PDF imzası ve REST API hazırdır;
 > **İmzager karşılıklı testleri ve gerçek ESHS/Kamu SM ortamında uçtan uca test henüz yapılmadı.** Bu yazılım
 > BTK veya TÜBİTAK tarafından onaylanmış değildir. / Signing, validation, revocation checks and LT/LTA
 > work; İmzager interoperability and end-to-end tests against real Turkish CAs/TSAs are not done yet.
@@ -33,6 +33,7 @@ timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 
 9. [Mimari / Architecture](#9-mimari--architecture)
 10. [Yol haritası / Roadmap](#10-yol-haritası--roadmap)
 11. [Lisans / License](#11-lisans--license)
+12. [REST API](#12-rest-api)
 
 ---
 
@@ -50,7 +51,8 @@ timestamping** (BES, T, LT, LTA profiles) and **validates** signatures (ETSI EN 
 | İmza doğrulama (`esign verify`), zincir, OCSP/CRL / Validation, revocation | ✅ | ETSI EN 319 102-1, RFC 6960, RFC 5280 |
 | LT / LTA (uzun dönem arşiv) / long-term archival | ✅ `--level lt\|lta` | ETSI EN 319 122/132/142 |
 | İmzager karşılıklı uyumluluk / interoperability | ⏳ Faz 6 | — |
-| REST API | ⏳ Faz 7 | — |
+| REST API: doğrulama + iki aşamalı imza (hazırla → kartta imzala → birleştir), OpenAPI | ✅ v0.5.0 | OpenAPI 3.1 |
+| Sunucu üzerinden imza (`esign sign --server`) / sign via API | ✅ v0.5.0 | — |
 
 ## 2. Kurulum / Installation
 
@@ -264,7 +266,7 @@ validate signatures or check revocation, and must not be the sole basis for a le
 
 ```bash
 sudo apt install openjdk-21-jdk maven            # macOS: brew install openjdk@21 maven
-mvn -B verify                                     # 78 test
+mvn -B verify                                     # 98 test
 java -jar esign-cli/target/esign.jar help
 
 # Kartsız gerçek PKCS#11 testi (SoftHSM2) / real PKCS#11 tests without a card
@@ -293,6 +295,7 @@ esign-cli ──► esign-cades ─┐
           ├─► esign-xades ─┤           │                    ▲
           ├─► esign-validation ┘       │                    │
           └─► esign-token-pkcs11 ──────┼────────────────────┘ (SunPKCS11 adaptörü)
+esign-api (Spring Boot) ──► cades/pades/xades + validation (kart yok; imza istemcide)
                                        └─► EU DSS (LGPL-2.1): RFC 3161, OCSP/CRL, ETSI doğrulama
 ```
 
@@ -303,7 +306,8 @@ esign-cli ──► esign-cades ─┐
 | `esign-dss-support` | Kart ↔ EU DSS köprüsü; `SignatureProfile` (B/T/LT/LTA), `Timestamping`, `TrustSettings` (kökler, OCSP/CRL) |
 | `esign-validation` | `SignatureVerifier`: ETSI EN 319 102-1 doğrulama, sade sonuç + XML rapor |
 | `esign-cades` / `-pades` / `-xades` | Biçime özgü imza üreticiler |
-| `esign-cli` | `esign` komut satırı |
+| `esign-cli` | `esign` komut satırı; `--server` ile API istemcisi |
+| `esign-api` | Spring Boot REST API: doğrulama, iki aşamalı imza, OpenAPI; veritabanı gerektirmez |
 
 Yeni bir kart türü için yalnızca `SigningToken` uygulanır; yeni bir mevzuat profili için yalnızca ilgili
 imzalayıcı değişir. Akademik açıklama: [docs/makale-taslagi.md](docs/makale-taslagi.md).
@@ -316,9 +320,56 @@ imzalayıcı değişir. Akademik açıklama: [docs/makale-taslagi.md](docs/makal
 4. ✅ RFC 3161 zaman damgası (isteğe bağlı, T profili), `.deb` / macOS paketleri
 5. ✅ İmza doğrulama (`esign verify`), OCSP/CRL, zincir, LT/LTA
 6. ⏳ İmzager karşılıklı uyumluluk testleri, ✅ görünür PDF imzası (v0.4.0), ESHS kimlik doğrulamalı zaman damgası, masaüstü arayüz
-7. ⏳ REST API (Spring Boot), Docker
+7. ✅ REST API (Spring Boot, v0.5.0), ⏳ Docker
 
 ## 11. Lisans / License
 
 [GNU GPL v3.0](LICENSE). EU DSS LGPL-2.1, Bouncy Castle MIT benzeri, Apache PDFBox Apache-2.0
 lisanslıdır; tümü GPL-3.0 ile uyumludur. / All dependencies are GPL-3.0 compatible.
+
+## 12. REST API
+
+`esign-api`, imza **doğrulama** ve **iki aşamalı imza** sunan bir Spring Boot servisidir. Sunucu akıllı kartı
+göremez; bu yüzden özel anahtar ve PIN sunucuya **hiç gitmez**:
+
+1. **Hazırla / prepare** — istemci belgeyi ve imzacının sertifika zincirini gönderir; sunucu imzalanacak
+   veriyi (`dataToSign`, ETSI imzalı öznitelikler) döndürür.
+2. **Kartta imzala / sign on card** — istemci bu baytları kendi kartında `signatureAlgorithm`
+   (ör. `SHA256withRSA`) ile imzalar.
+3. **Birleştir / complete** — sunucu imza değerini sertifikanın açık anahtarıyla doğrular, gerekirse zaman
+   damgası/OCSP/CRL ekler ve imzalı belgeyi döndürür. Oturum tek kullanımlıktır, süresi sınırlıdır.
+
+*The server never sees the private key or PIN: it prepares the data to be signed, the client signs it on the
+card, the server verifies the value and assembles the signed document.*
+
+```bash
+mvn -B -pl esign-api -am package -DskipTests
+java -jar esign-api/target/esign-api.jar                 # http://localhost:8080/swagger-ui.html
+
+# Kartlı bilgisayardan sunucu üzerinden imza / sign through the API with the local card
+ESIGN_API_KEY=... esign sign --in sozlesme.pdf --server http://localhost:8080 [--level t]
+```
+
+| Uç nokta / Endpoint | Açıklama |
+| --- | --- |
+| `POST /api/v1/signatures/prepare` | multipart: `file`, `certificate` (PEM/DER zincir); parametre: `format` auto/cades/pades/xades, `level` bes/t/lt/lta, `detached`, `reason` |
+| `POST /api/v1/signatures/{id}/complete` | JSON `{"signatureValue":"<Base64>"}` → imzalı dosya (`X-Signature-Level` başlığı) |
+| `DELETE /api/v1/signatures/{id}` | Hazırlanmış imzayı iptal et |
+| `POST /api/v1/validations` | multipart: `file`, isteğe bağlı `original` (ayrık .p7s); `detailed=true` XML rapor ekler |
+| `GET /v3/api-docs`, `/swagger-ui.html` | OpenAPI 3.1 belgesi ve deneme arayüzü |
+| `GET /actuator/health` | Sağlık denetimi (liveness/readiness) |
+
+Ayarlar yalnızca ortam değişkenleriyle verilir (sırlar depoya girmez) / configuration via environment only:
+
+| Değişken | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `ESIGN_API_KEY` | boş | Doluysa `/api/**` için `X-API-Key` başlığı zorunlu (sabit zamanlı karşılaştırma) |
+| `ESIGN_TSA_URL` | boş | RFC 3161 TSA; boşsa yalnızca BES |
+| `ESIGN_TRUST_DIR` | boş | Güvenilir kökler (doğrulama ve LT/LTA için) |
+| `ESIGN_OFFLINE` | `false` | `true`: OCSP/CRL/AIA sorgusu yok |
+| `ESIGN_SESSION_TTL` / `ESIGN_MAX_SESSIONS` | `10m` / `200` | Bekleyen imza süresi ve üst sınırı |
+
+Veritabanı gerekmez: API durumsuzdur; bekleyen imzalar yalnızca bellekte ve kısa süre tutulur, belgeler diske
+yazılmaz. Dosya sınırı 25 MB. İnternete açarken önüne TLS sonlandıran bir ters vekil (nginx, Caddy) koyun ve
+`ESIGN_API_KEY` tanımlayın. *No database needed. Put a TLS reverse proxy in front and set an API key before
+exposing it.* PAdES görünür imza kutusu şimdilik yalnızca CLI'dadır.

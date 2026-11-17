@@ -102,6 +102,9 @@ public final class Main {
             err.println("Hata: çıktı zaten var, üzerine yazılmaz: " + target);
             return 1;
         }
+        if (a.server().isPresent()) {
+            return remoteSign(a, in, target, out, err);
+        }
         SignatureSettings settings;
         Optional<VisibleSignature> visible;
         try {
@@ -149,6 +152,42 @@ public final class Main {
             return 1;
         }
     }
+
+    /** --server: sunucu hazırlar, kart burada imzalar, sunucu birleştirir. */
+    private static int remoteSign(CliArgs a, Path in, Path target, PrintStream out, PrintStream err) {
+        RemoteSignClient client;
+        try {
+            client = new RemoteSignClient(java.net.URI.create(a.server().get().strip()), System.getenv(API_KEY_ENV));
+        } catch (IllegalArgumentException e) {
+            err.println("Hata: " + e.getMessage());
+            return 2;
+        }
+        Path lib = resolveLibrary(a, err);
+        if (lib == null) {
+            return 1;
+        }
+        char[] pin = readPin(err);
+        if (pin == null) {
+            return 2;
+        }
+        try (var token = Pkcs11SigningToken.open(new Pkcs11Config(lib, a.slot()), pin)) {
+            String alias = chooseAlias(token, a, err);
+            if (alias == null) {
+                return 1;
+            }
+            var result = client.sign(token, alias, Files.readAllBytes(in), in.getFileName().toString(),
+                    a.effectiveFormat().name().toLowerCase(java.util.Locale.ROOT), a.level().orElse("bes"),
+                    a.detached(), a.reason().orElse(null));
+            Files.write(target, result.content(), StandardOpenOption.CREATE_NEW);
+            out.println("İmzalandı (" + result.level() + ", sunucu: " + client.server().getHost() + "): " + target);
+            return 0;
+        } catch (TokenException | IOException e) {
+            err.println("Hata: " + e.getMessage());
+            return 1;
+        }
+    }
+
+    static final String API_KEY_ENV = "ESIGN_API_KEY";
 
     private static int verify(CliArgs a, PrintStream out, PrintStream err) {
         Path in = a.input().orElseThrow();

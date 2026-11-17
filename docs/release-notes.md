@@ -1,20 +1,22 @@
-## esign v0.4.0 — Görünür PDF imzası / Visible PDF signature
+## esign v0.5.0 — REST API
 
 **TR**
-- `esign sign --in x.pdf --visible`: PDF'in son sayfasının sağ altına görünür imza kutusu çizilir
-  (imzacı adı, imza zamanı, varsa `--reason`). Türkçe karakterler gömülü yazı tipiyle (PT Serif) korunur.
-- `--visible-at <sayfa>` veya `--visible-at <sayfa>,<x>,<y>` ile yer seçilir (puan; sayfanın sol üstünden).
-- Görünür imza, PAdES-BES/T/LT/LTA profillerinin tümüyle birlikte kullanılabilir; imzanın kriptografik
-  geçerliliğini değiştirmez.
-- v0.3.1: Bouncy Castle 1.86 güvenlik güncellemesi (Dependabot uyarısı giderildi).
-- 78 otomatik test.
+- Yeni **esign-api** (Spring Boot): imza doğrulama ve iki aşamalı imza. Sunucu imzalanacak veriyi hazırlar,
+  kullanıcı kendi kartıyla imzalar, sunucu imzayı doğrulayıp imzalı belgeyi üretir. **Özel anahtar ve PIN
+  sunucuya gitmez.** OpenAPI belgesi `/swagger-ui.html` adresindedir. Veritabanı gerekmez.
+- `esign sign --server http://sunucu:8080`: kart bu bilgisayarda, imza sunucu üzerinden.
+- `esign-api.jar` bu sürüme eklendi: `java -jar esign-api.jar`. Ayarlar ortam değişkenleriyle
+  (`ESIGN_API_KEY`, `ESIGN_TSA_URL`, `ESIGN_TRUST_DIR`).
+- 98 otomatik test.
 
 **EN**
-- `--visible` / `--visible-at` draw a visible PAdES signature box (signer, time, reason) with an embedded font
-  that keeps Turkish characters. Bouncy Castle updated to 1.86 in v0.3.1. 78 tests pass.
+- New Spring Boot **REST API**: validation plus two-step signing (prepare → sign on the client's card →
+  complete). The private key and PIN never reach the server. OpenAPI at `/swagger-ui.html`. No database.
+- `esign sign --server <url>` uses the API with the local card. `esign-api.jar` attached.
 
 **Bilinen sınırlar / Known limits:** İmzager karşılıklı testleri ve gerçek Kamu SM/ESHS ortamında uçtan uca test
-yapılmadı. Görünür kutuya logo/görsel eklenemez. Kök sertifikalar pakete eklenmez. ESHS kimlik doğrulamalı zaman
-damgası desteklenmez. macOS paketi notarize edilmemiştir. Yazılım herhangi bir kurum tarafından sertifikalandırılmamıştır.
+yapılmadı. API'de görünür PDF imza kutusu yok (CLI'da var). Kök sertifikalar pakete eklenmez. ESHS kimlik
+doğrulamalı zaman damgası desteklenmez. macOS paketi notarize edilmemiştir. Yazılım herhangi bir kurum
+tarafından sertifikalandırılmamıştır.
 
-Kurulum: README → "Kurulum / Installation". Bütünlük: `sha256sum -c SHA256SUMS.txt --ignore-missing`.
+Kurulum: README → "Kurulum / Installation", "REST API". Bütünlük: `sha256sum -c SHA256SUMS.txt --ignore-missing`.
